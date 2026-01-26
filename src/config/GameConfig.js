@@ -20,7 +20,7 @@ export const GameConfig = {
         // Using perspective with narrow FOV for 2.5D effect
         fov: 35,                   // Narrow FOV reduces perspective distortion
         near: 0.1,
-        far: 100,
+        far: 500,
         distance: 12,              // Distance from play plane (Z axis)
         height: 3,                 // Camera Y position
         lookAtHeight: 1.5,         // What Y level the camera looks at
@@ -240,9 +240,9 @@ export const GameConfig = {
         gravity: 28,
         groundLevel: 0,
         parallaxLayers: [
-            { depth: -15, speedMultiplier: 0.2, color: 0x1a0a1a },  // Far background
-            { depth: -10, speedMultiplier: 0.4, color: 0x2a1a2a },  // Mid background
-            { depth: -5, speedMultiplier: 0.7, color: 0x3a2a3a }    // Near background
+            { depth: -70, speedMultiplier: 0.1, color: 0x1a0a1a },  // Far background
+            { depth: -40, speedMultiplier: 0.3, color: 0x2a1a2a },  // Mid background
+            { depth: -20, speedMultiplier: 0.5, color: 0x3a2a3a }   // Near background
         ]
     }
 };

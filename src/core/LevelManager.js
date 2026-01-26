@@ -108,7 +108,7 @@ export class LevelManager {
             const lastPlat = this.currentLevel.platforms[this.currentLevel.platforms.length - 1];
             const levelEndX = lastPlat.x + (lastPlat.w / 2);
 
-            if (playerX > levelEndX) {
+            if (playerX > levelEndX - 5) {
                 this.triggerVictory();
             }
         }
@@ -117,6 +117,8 @@ export class LevelManager {
     triggerVictory() {
         if (this.victoryTriggered) return;
         this.victoryTriggered = true;
+
+        if (this.game && this.game.audio) this.game.audio.playSound('victory');
 
         console.log("🏆 Level Complete!");
         const ui = document.getElementById('victory-screen');

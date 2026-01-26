@@ -15,6 +15,7 @@ import { SceneManager } from './core/SceneManager.js';
 import { LevelManager } from './core/LevelManager.js';
 import { ParticleManager } from './core/ParticleManager.js';
 import { InputManager } from './core/InputManager.js';
+import { AudioManager } from './core/AudioManager.js';
 import { Player } from './entities/Player.js';
 import { GameConfig } from './config/GameConfig.js';
 import { Ghoul } from './entities/Ghoul.js';
@@ -35,6 +36,7 @@ class Game {
         this.levelManager = null;
         this.particleManager = null;
         this.inputManager = null;
+        this.audio = null;
 
         // Entities
         this.player = null;
@@ -87,6 +89,10 @@ class Game {
             this.updateLoadingProgress(70, 'Setting up input...');
             this.initInput();
 
+            this.updateLoadingProgress(80, 'Initializing audio...');
+            // Audio is ready via constructor
+            // await this.audio.init();
+
             this.updateLoadingProgress(90, 'Spawning player...');
             await this.initEntities();
 
@@ -97,6 +103,13 @@ class Game {
 
             // Hide loading screen
             document.getElementById('loading-screen').classList.add('hidden');
+
+            // Setup click listener for audio resume context
+            document.addEventListener('click', () => {
+                if (this.audio && this.audio.ctx.state === 'suspended') {
+                    this.audio.ctx.resume();
+                }
+            }, { once: true });
 
             // Start the game loop
             this.isRunning = true;
@@ -157,16 +170,19 @@ class Game {
             GameConfig.rendering.fogFar
         );
 
-        // Create SceneManager for environment, lighting, and parallax
-        this.sceneManager = new SceneManager(this.scene);
+        // Systems
+        // this.inputManager = new InputManager(); // Handled in initInput
+        this.audio = new AudioManager();
+
+        this.sceneManager = new SceneManager(this);
+        this.levelManager = new LevelManager(this);
+        this.particleManager = new ParticleManager(this.scene);
+
+        // Initialize SceneManager
         await this.sceneManager.init();
 
         // Init Level Manager
-        this.levelManager = new LevelManager(this);
         this.levelManager.loadLevel('graveyard');
-
-        // Init Particles
-        this.particleManager = new ParticleManager(this.scene);
 
         // Setup camera - using perspective with narrow FOV for subtle depth
         // This gives us the 2.5D look while maintaining some parallax

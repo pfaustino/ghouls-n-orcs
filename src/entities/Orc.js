@@ -80,6 +80,7 @@ export class Orc extends Enemy {
                 color: 'spark',
                 scale: 1
             });
+            if (this.game && this.game.audio) this.game.audio.playSound('armor_break');
             return; // No damage
         }
 

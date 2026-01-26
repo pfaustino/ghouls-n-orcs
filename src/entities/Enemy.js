@@ -61,6 +61,8 @@ export class Enemy {
             });
         }
 
+        if (this.game && this.game.audio) this.game.audio.playSound('hit');
+
         if (this.health <= 0) {
             this.die();
         }
@@ -70,6 +72,8 @@ export class Enemy {
         this.isActive = false;
         this.mesh.visible = false;
         console.log(`${this.config.name} died!`);
+
+        if (this.game && this.game.audio) this.game.audio.playSound('enemy_death');
 
         // Remove from scene (simple version)
         this.scene.remove(this.mesh);

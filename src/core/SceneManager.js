@@ -11,8 +11,9 @@ import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { GameConfig } from '../config/GameConfig.js';
 
 export class SceneManager {
-    constructor(scene) {
-        this.scene = scene;
+    constructor(game) {
+        this.game = game;
+        this.scene = game.scene;
         this.parallaxGroups = [];
         this.groundPlane = null;
         this.lights = {};
@@ -30,7 +31,7 @@ export class SceneManager {
 
     createLighting() {
         // Dramatic rim lighting focus
-        const ambientLight = new THREE.AmbientLight(0x404060, 0.4); // Cool purple-ish ambient
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.6); // Boosted ambient
         this.scene.add(ambientLight);
 
         // Key light (warm, from moon/fire)
@@ -51,11 +52,18 @@ export class SceneManager {
         this.scene.add(moonLight);
         this.lights.moon = moonLight;
 
+        // Flashlight (Camera fill)
+        const camLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        camLight.position.set(0, 0, 10);
+        this.scene.add(camLight);
+
         // Rim light (sharp, back light to separate silhouettes)
         const rimLight = new THREE.DirectionalLight(0xffaaee, 0.6);
         rimLight.position.set(0, 5, -5); // Behind entities
         this.scene.add(rimLight);
         this.lights.rim = rimLight;
+
+        console.log("🔦 Lighting created");
     }
 
     createEnvironment() {
@@ -68,34 +76,90 @@ export class SceneManager {
         GameConfig.world.parallaxLayers.forEach((layerConfig, index) => {
             const group = new THREE.Group();
 
-            // Create some random shapes for this layer
-            const count = 20;
-            const geometry = new THREE.ConeGeometry(1, 4, 4);
-            const material = new THREE.MeshBasicMaterial({
+            // Distribute items across the whole level length (approx 300)
+            // Depth 0 (Far) -> Mountains
+            // Depth 1 (Mid) -> Trees
+            // Depth 2 (Near) -> Tombstones
+
+            const count = 40;
+            const rangeX = 400; // -50 to 350
+            const startX = -50;
+
+            const material = new THREE.MeshStandardMaterial({
                 color: layerConfig.color,
-                fog: true
+                roughness: 1.0,
+                metalness: 0
             });
 
             for (let i = 0; i < count; i++) {
-                const mesh = new THREE.Mesh(geometry, material);
-                // Distribute widely on X
-                mesh.position.x = (Math.random() - 0.5) * 100;
-                // Vary height slightly
-                mesh.position.y = Math.random() * 5 + index * 2;
-                mesh.scale.setScalar(2 + Math.random() * 2);
+                let mesh;
+                if (index === 0) {
+                    mesh = this.createMountain(material);
+                    mesh.position.y = -5 + Math.random() * 5;
+                    mesh.scale.setScalar(5 + Math.random() * 5);
+                } else if (index === 1) {
+                    mesh = this.createSpookyTree(material);
+                    mesh.position.y = -2;
+                    mesh.scale.setScalar(1 + Math.random() * 0.5);
+                } else {
+                    mesh = this.createTombstone(material);
+                    mesh.position.y = 0;
+                    mesh.scale.setScalar(0.8 + Math.random() * 0.4);
+                }
+
+                mesh.position.x = startX + Math.random() * rangeX;
                 group.add(mesh);
             }
 
             // Set Z depth
             group.position.z = layerConfig.depth;
             group.userData = {
-                speedMultiplier: layerConfig.speedMultiplier,
-                initialX: 0
+                speedMultiplier: layerConfig.speedMultiplier
             };
 
             this.scene.add(group);
             this.parallaxGroups.push(group);
         });
+    }
+
+    createMountain(material) {
+        const h = 10 + Math.random() * 10;
+        const r = 5 + Math.random() * 5;
+        const geo = new THREE.ConeGeometry(r, h, 4);
+        return new THREE.Mesh(geo, material);
+    }
+
+    createSpookyTree(material) {
+        const group = new THREE.Group();
+        const trunkH = 4 + Math.random() * 2;
+        const trunkGeo = new THREE.CylinderGeometry(0.2, 0.4, trunkH, 5);
+        const trunk = new THREE.Mesh(trunkGeo, material);
+        trunk.position.y = trunkH / 2;
+        group.add(trunk);
+
+        // Branches
+        for (let i = 0; i < 3; i++) {
+            const branchGeo = new THREE.CylinderGeometry(0.1, 0.15, 2, 4);
+            const branch = new THREE.Mesh(branchGeo, material);
+            const y = trunkH * (0.4 + Math.random() * 0.5);
+            branch.position.set(0, y, 0);
+            branch.rotation.z = (Math.random() - 0.5) * 2;
+            branch.rotation.x = (Math.random() - 0.5) * 2;
+            branch.position.x += Math.sin(branch.rotation.z);
+            group.add(branch);
+        }
+        return group;
+    }
+
+    createTombstone(material) {
+        const w = 0.5 + Math.random() * 0.5;
+        const h = 0.8 + Math.random() * 0.4;
+        const d = 0.2;
+        const geo = new THREE.BoxGeometry(w, h, d);
+        const mesh = new THREE.Mesh(geo, material);
+        mesh.position.y = h / 2;
+        mesh.rotation.z = (Math.random() - 0.5) * 0.2; // Tilted
+        return mesh;
     }
 
     update(dt, cameraX) {

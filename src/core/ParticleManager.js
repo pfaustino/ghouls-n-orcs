@@ -11,6 +11,7 @@ export class ParticleManager {
         this.bloodMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
         this.dustMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.8 });
         this.sparkMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+        this.armorMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4, metalness: 0.6 });
     }
 
     emit(config) {
@@ -23,6 +24,7 @@ export class ParticleManager {
 
             if (color === 'dust') material = this.dustMat;
             if (color === 'spark') material = this.sparkMat;
+            if (color === 'armor') material = this.armorMat;
 
             const mesh = new THREE.Mesh(this.boxGeo, material);
             mesh.scale.setScalar(size);

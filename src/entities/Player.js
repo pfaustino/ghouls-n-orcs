@@ -53,31 +53,57 @@ export class Player {
     }
 
     createProceduralCharacter() {
-        // Create a group to hold everything
         this.mesh = new THREE.Group();
         this.scene.add(this.mesh);
 
-        // Visual debug mesh (a capsule/box for now until we have rig)
-        const geometry = new THREE.CapsuleGeometry(0.4, 1.0, 4, 8);
-        const material = new THREE.MeshStandardMaterial({ color: 0xaa2222 }); // Red knight
-        this.bodyMesh = new THREE.Mesh(geometry, material);
-        this.bodyMesh.position.y = 0.9; // Pivot at feet
-        this.bodyMesh.castShadow = true;
-        this.mesh.add(this.bodyMesh);
+        // 1. Base Body (Skin/Underwear)
+        const skinGeo = new THREE.CapsuleGeometry(0.35, 1.0, 4, 8);
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffccaa }); // Skin tone
+        this.skinMesh = new THREE.Mesh(skinGeo, skinMat);
+        this.skinMesh.position.y = 0.9;
+        this.skinMesh.castShadow = true;
+        this.mesh.add(this.skinMesh);
 
-        // Add a "Weapon" visual
+        // "Underwear" (Boxers)
+        const boxersGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.3, 8);
+        const boxersMat = new THREE.MeshStandardMaterial({ color: 0xffffff }); // White boxers with hearts?
+        const boxers = new THREE.Mesh(boxersGeo, boxersMat);
+        boxers.position.y = -0.2; // Relative to skin center
+        this.skinMesh.add(boxers);
+
+        // 2. Armor Group
+        this.armorGroup = new THREE.Group();
+        this.skinMesh.add(this.armorGroup);
+
+        // Chestplate
+        const chestGeo = new THREE.CylinderGeometry(0.42, 0.40, 0.5, 8);
+        const armorMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
+        this.chestPlate = new THREE.Mesh(chestGeo, armorMat);
+        this.chestPlate.position.y = 0.2;
+        this.armorGroup.add(this.chestPlate);
+
+        // Helmet
+        const helmGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        this.helmet = new THREE.Mesh(helmGeo, armorMat.clone());
+        this.helmet.position.y = 0.7;
+        this.armorGroup.add(this.helmet);
+
+        // Assign bodyMesh to skinMesh for general purpose (flashing/physics)
+        this.bodyMesh = this.skinMesh;
+
+        // Weapon (Parent to body/arm)
         const weaponGeo = new THREE.BoxGeometry(0.1, 0.8, 0.1);
-        const weaponMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+        const weaponMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
         this.weaponMesh = new THREE.Mesh(weaponGeo, weaponMat);
-        this.weaponMesh.position.set(0.4, 0.8, 0.3);
+        this.weaponMesh.position.set(0.4, 0.2, 0.3); // Hand position roughly
         this.weaponMesh.rotation.x = Math.PI / 4;
-        this.mesh.add(this.weaponMesh);
+        this.skinMesh.add(this.weaponMesh); // Add to skin so it moves with it
 
-        // Direction indicator
+        // Direction indicator (Eyes)
         const eyeGeo = new THREE.BoxGeometry(0.3, 0.1, 0.2);
         const eyeMesh = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-        eyeMesh.position.set(0.2, 1.3, 0);
-        this.mesh.add(eyeMesh);
+        eyeMesh.position.set(0, 0.6, 0.3); // Relative to skin
+        this.skinMesh.add(eyeMesh);
     }
 
     setPosition(x, y, z) {
@@ -91,6 +117,7 @@ export class Player {
         if (this.currentWeaponIndex >= this.inventory.length) this.currentWeaponIndex = 0;
 
         this.updateWeaponUI();
+        if (this.game && this.game.audio) this.game.audio.playSound('switch');
     }
 
     updateWeaponUI() {
@@ -213,8 +240,23 @@ export class Player {
         this.health -= amount;
         console.log(`💔 Player hit! Health: ${this.health}`);
 
+        if (this.game && this.game.audio) {
+            this.game.audio.playSound('hit');
+        }
+
         // Update UI
         this.updateArmorUI();
+
+        // Armor Breaking Visuals
+        if (this.health === 2 && this.helmet) {
+            this.helmet.visible = false;
+            this.spawnArmorShards(this.helmet.position, 3);
+            if (this.game.audio) this.game.audio.playSound('armor_break');
+        } else if (this.health === 1 && this.chestPlate) {
+            this.chestPlate.visible = false;
+            this.spawnArmorShards(this.chestPlate.position, 5);
+            if (this.game.audio) this.game.audio.playSound('armor_break');
+        }
 
         if (this.health <= 0) {
             this.die();
@@ -228,6 +270,25 @@ export class Player {
             this.velocity.x = -5 * (this.facingRight ? 1 : -1);
             this.isGrounded = false;
             this.fsm.changeState('JUMP_FALL');
+        }
+    }
+
+    spawnArmorShards(localPos, count) {
+        // Convert to world space
+        const worldPos = new THREE.Vector3();
+        if (this.skinMesh) {
+            this.skinMesh.localToWorld(worldPos.copy(localPos));
+        } else {
+            worldPos.copy(this.position).add(localPos);
+        }
+
+        if (this.game.particleManager) {
+            this.game.particleManager.emit({
+                position: worldPos,
+                count: count,
+                color: 'armor',
+                scale: 2.0
+            });
         }
     }
 
@@ -371,7 +432,7 @@ class JumpRiseState extends State {
     enter() {
         this.owner.velocity.y = GameConfig.player.jumpVelocity;
         this.owner.isGrounded = false;
-        // console.log("Enter JUMP_RISE");
+        if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('jump');
     }
 
     update(dt) {
@@ -456,6 +517,11 @@ class AttackThrowState extends State {
 
         // Visual cue (flash white)
         this.owner.bodyMesh.material.color.setHex(0xffffff);
+
+        // Spawn actual projectile
+        this.spawnProjectile();
+
+        if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('throw');
     }
 
     update(dt) {
@@ -464,7 +530,6 @@ class AttackThrowState extends State {
         // Anticipation -> Active
         if (this.animPhase === 'anticipation' && this.timer >= GameConfig.attacks.throw.anticipation) {
             this.animPhase = 'active';
-            this.spawnProjectile();
             this.owner.bodyMesh.material.color.setHex(0xffff00); // Yellow flash
         }
 
@@ -551,6 +616,8 @@ class AttackHeavyState extends State {
                 if (this.owner.weaponMesh) {
                     this.owner.weaponMesh.rotation.z = Math.PI / 2; // Swing forward
                 }
+
+                if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('swing');
             }
             this.checkCollisions();
         } else if (this.timer < config.anticipation + config.active + config.recovery) {

@@ -46,19 +46,33 @@ export const Levels = {
             { x: 190, y: 0, w: 40, h: 2, d: 10, type: 'ground' }
         ],
         spawners: [
-            { x: 20, type: 'ghoulShambling', triggerDist: 15 },
-            { x: 40, type: 'ghoulShambling', triggerDist: 15 },
-            { x: 70, type: 'ghoulCrawler', triggerDist: 15 },
-            { x: 95, type: 'ghoulShambling', triggerDist: 15 },
+            // Early game - aggressive start
+            { x: 15, type: 'ghoulShambling', triggerDist: 15 },
+            { x: 30, type: 'ghoulShambling', triggerDist: 15 },
+            { x: 38, type: 'ghoulCrawler', triggerDist: 12 }, // Stair ambush
+            { x: 50, type: 'ghoulShambling', triggerDist: 15 }, // Bridge
+
+            // Pit Ambush
+            { x: 72, type: 'ghoulCrawler', triggerDist: 12 },
+            { x: 78, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 85, type: 'ghoulShambling', triggerDist: 12 },
+
+            // Transition
+            { x: 100, type: 'ghoulShambling', triggerDist: 15 },
 
             // Orcs!
             { x: 120, type: 'orcGrunt', triggerDist: 20 }, // Guarding entrance
+            { x: 128, type: 'ghoulShambling', triggerDist: 12 },
             { x: 135, type: 'orcGrunt', triggerDist: 15 },
-            { x: 140, type: 'ghoulShambling', triggerDist: 10 }, // Fodder support
 
-            { x: 155, type: 'orcBerserker', triggerDist: 18 }, // On tower?
+            // Tower Escalation
+            { x: 148, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 155, type: 'orcBerserker', triggerDist: 18 }, // On tower
 
+            // Final Gauntlet
+            { x: 175, type: 'ghoulShambling', triggerDist: 15 },
             { x: 180, type: 'orcGrunt', triggerDist: 15 },
+            { x: 188, type: 'ghoulCrawler', triggerDist: 15 },
             { x: 195, type: 'orcBerserker', triggerDist: 15 },
             { x: 200, type: 'orcGrunt', triggerDist: 15 }
         ]
