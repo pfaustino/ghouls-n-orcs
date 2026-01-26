@@ -3,6 +3,7 @@ import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { Levels } from '../config/Levels.js';
 import { Ghoul } from '../entities/Ghoul.js';
+import { Orc } from '../entities/Orc.js';
 
 export class LevelManager {
     constructor(game) {
@@ -103,8 +104,13 @@ export class LevelManager {
         });
 
         // Check Level End
-        if (this.currentLevel && playerX > this.currentLevel.platforms[this.currentLevel.platforms.length - 1].x) {
-            this.triggerVictory();
+        if (this.currentLevel) {
+            const lastPlat = this.currentLevel.platforms[this.currentLevel.platforms.length - 1];
+            const levelEndX = lastPlat.x + (lastPlat.w / 2);
+
+            if (playerX > levelEndX) {
+                this.triggerVictory();
+            }
         }
     }
 
@@ -150,7 +156,14 @@ export class LevelManager {
         const config = GameConfig.enemies[spawnerInfo.type];
         if (config) {
             console.log(`💀 Spawning ${config.name} at ${spawnerInfo.x}, ${spawnY}`);
-            const enemy = new Ghoul(this.scene, config, spawnerInfo.x, spawnY, this.game);
+
+            let enemy;
+            if (spawnerInfo.type.startsWith('orc')) {
+                enemy = new Orc(this.scene, config, spawnerInfo.x, spawnY, this.game);
+            } else {
+                enemy = new Ghoul(this.scene, config, spawnerInfo.x, spawnY, this.game);
+            }
+
             this.game.enemies.push(enemy);
         }
     }
@@ -197,6 +210,46 @@ export class LevelManager {
         }
 
         return false;
+    }
+
+    checkWallCollision(entity) {
+        const colliderWidth = 0.4; // Half-width
+        const colliderHeight = 1.5; // Height to check against walls
+
+        // Construct player AABB
+        const minX = entity.position.x - colliderWidth;
+        const maxX = entity.position.x + colliderWidth;
+        const minY = entity.position.y + 0.1; // Lift slightly to avoid floor friction
+        const maxY = entity.position.y + colliderHeight;
+
+        for (const p of this.platforms) {
+            // Optimization: If platform is ground (y=0) and we are above it, skip?
+            // Or simple AABB check
+            const box = p.box;
+
+            // Check overlap
+            if (maxX > box.min.x && minX < box.max.x &&
+                maxY > box.min.y && minY < box.max.y) {
+
+                // Determine overlaps
+                const overlapX = Math.min(maxX, box.max.x) - Math.max(minX, box.min.x);
+                const overlapY = Math.min(maxY, box.max.y) - Math.max(minY, box.min.y);
+
+                // If overlapY is significant, it's a wall hit.
+                // If overlapY is tiny, it might be feet clipping floor - ignore
+                if (overlapY > 0.2) {
+                    // Resolve X
+                    if (entity.position.x < (box.min.x + box.max.x) / 2) {
+                        // Push Left
+                        entity.position.x = box.min.x - colliderWidth - 0.001;
+                    } else {
+                        // Push Right
+                        entity.position.x = box.max.x + colliderWidth + 0.001;
+                    }
+                    entity.velocity.x = 0;
+                }
+            }
+        }
     }
 
     // Helper to find ground height at specific X (for spawning)

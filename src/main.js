@@ -52,7 +52,7 @@ class Game {
         this.isPaused = false;
 
         // Debug
-        this.debugMode = false;
+        this.debugMode = true;
         this.frameCount = 0;
         this.fpsTimer = 0;
         this.currentFPS = 60;
@@ -68,6 +68,10 @@ class Game {
      */
     async init() {
         console.log('🎮 Ghouls n Orcs - Initializing...');
+
+        // Show debug initially
+        const debugPanel = document.getElementById('debug-info');
+        if (debugPanel) debugPanel.style.display = 'block';
 
         try {
             // Update loading text

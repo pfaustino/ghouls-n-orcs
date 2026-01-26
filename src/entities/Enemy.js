@@ -48,13 +48,17 @@ export class Enemy {
 
         // Flash white
         if (this.bodyMesh) {
-            const oldColor = this.bodyMesh.material.color.getHex();
-            this.bodyMesh.material.color.setHex(0xffffff);
-            setTimeout(() => {
-                if (this.isActive && this.bodyMesh) {
-                    this.bodyMesh.material.color.setHex(oldColor);
+            this.bodyMesh.traverse((child) => {
+                if (child.isMesh && child.material && child.material.color) {
+                    const oldColor = child.material.color.getHex();
+                    child.material.color.setHex(0xffffff);
+                    setTimeout(() => {
+                        if (this.isActive && child && child.material) {
+                            child.material.color.setHex(oldColor);
+                        }
+                    }, 100);
                 }
-            }, 100);
+            });
         }
 
         if (this.health <= 0) {

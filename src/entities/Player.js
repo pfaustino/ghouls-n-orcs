@@ -136,8 +136,7 @@ export class Player {
             }
         }
 
-        // Apply Velocity to Position
-        this.position.x += this.velocity.x * dt;
+        // Apply Velocity Y
         this.position.y += this.velocity.y * dt;
 
         // Ground Collision (LevelManager)
@@ -150,6 +149,14 @@ export class Player {
                 if (this.velocity.y < 0) this.velocity.y = 0;
                 this.isGrounded = true;
             }
+        }
+
+        // Apply Velocity X
+        this.position.x += this.velocity.x * dt;
+
+        // Wall Collision
+        if (this.game.levelManager) {
+            this.game.levelManager.checkWallCollision(this);
         }
 
         // Sync mesh position
