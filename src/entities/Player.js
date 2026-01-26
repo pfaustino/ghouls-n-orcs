@@ -32,6 +32,8 @@ export class Player {
 
         // Gameplay state
         this.health = GameConfig.player.maxArmor;
+        this.inventory = ['spear', 'knife', 'axe', 'torch'];
+        this.currentWeaponIndex = 0;
         this.isInvincible = false;
         this.invincibleTimer = 0;
 
@@ -46,6 +48,7 @@ export class Player {
         this.createProceduralCharacter();
 
         // Set initial state
+        this.updateWeaponUI();
         this.fsm.changeState('IDLE');
     }
 
@@ -82,6 +85,23 @@ export class Player {
         this.mesh.position.copy(this.position);
     }
 
+    switchWeapon(dir) {
+        this.currentWeaponIndex += dir;
+        if (this.currentWeaponIndex < 0) this.currentWeaponIndex = this.inventory.length - 1;
+        if (this.currentWeaponIndex >= this.inventory.length) this.currentWeaponIndex = 0;
+
+        this.updateWeaponUI();
+    }
+
+    updateWeaponUI() {
+        const el = document.getElementById('weapon-display');
+        if (el) {
+            const weaponKey = this.inventory[this.currentWeaponIndex];
+            const weaponName = GameConfig.weapons[weaponKey].name;
+            el.textContent = weaponName.toUpperCase();
+        }
+    }
+
     // =========================================================================
     // STATE MACHINE SETUP
     // =========================================================================
@@ -91,6 +111,7 @@ export class Player {
         this.fsm.addState('JUMP_RISE', new JumpRiseState(this.fsm));
         this.fsm.addState('JUMP_FALL', new JumpFallState(this.fsm));
         this.fsm.addState('ATTACK_THROW', new AttackThrowState(this.fsm));
+        this.fsm.addState('ATTACK_HEAVY', new AttackHeavyState(this.fsm));
         this.fsm.addState('DEATH', new DeathState(this.fsm));
     }
 
@@ -156,6 +177,12 @@ export class Player {
         // Update Animation Mixer
         if (this.mixer) {
             this.mixer.update(dt);
+        }
+
+        // Weapon Switching
+        if (!this.currentState.startsWith('ATTACK') && this.currentState !== 'DEATH') {
+            if (this.input.isJustPressed('weaponPrev')) this.switchWeapon(-1);
+            if (this.input.isJustPressed('weaponNext')) this.switchWeapon(1);
         }
 
         // Handle invincibility timer
@@ -277,6 +304,12 @@ class IdleState extends State {
             return;
         }
 
+        // ATTACK HEAVY
+        if (this.owner.input.isJustPressed('attackSecondary')) {
+            this.machine.changeState('ATTACK_HEAVY');
+            return;
+        }
+
         // RUN
         const hInput = this.owner.input.getHorizontalAxis();
         if (Math.abs(hInput) > 0.1) {
@@ -313,6 +346,12 @@ class RunState extends State {
             return;
         }
 
+        // ATTACK HEAVY
+        if (this.owner.input.isJustPressed('attackSecondary')) {
+            this.machine.changeState('ATTACK_HEAVY');
+            return;
+        }
+
         // FALLING (Walked off ledge)
         if (!this.owner.isGrounded) {
             this.machine.changeState('JUMP_FALL');
@@ -345,6 +384,12 @@ class JumpRiseState extends State {
             return;
         }
 
+        // ATTACK HEAVY (Air)
+        if (this.owner.input.isJustPressed('attackSecondary')) {
+            this.machine.changeState('ATTACK_HEAVY');
+            return;
+        }
+
         // Apex reached implies falling next physics step
         if (this.owner.velocity.y <= 0) {
             this.machine.changeState('JUMP_FALL');
@@ -364,6 +409,12 @@ class JumpFallState extends State {
         // ATTACK
         if (this.owner.input.isJustPressed('attackPrimary')) {
             this.machine.changeState('ATTACK_THROW');
+            return;
+        }
+
+        // ATTACK HEAVY (Air)
+        if (this.owner.input.isJustPressed('attackHeavy')) {
+            this.machine.changeState('ATTACK_HEAVY');
             return;
         }
 
@@ -437,9 +488,166 @@ class AttackThrowState extends State {
         const y = this.owner.position.y + 1.2; // Shoulder height
         const dir = this.owner.facingRight ? 1 : -1;
 
-        // Default to spear for now, could be dynamic based on inventory
+        // Use equipped weapon
+        const weaponKey = this.owner.inventory[this.owner.currentWeaponIndex];
         if (this.owner.game) {
-            this.owner.game.spawnProjectile(GameConfig.weapons.spear, x, y, dir, 'player');
+            this.owner.game.spawnProjectile(GameConfig.weapons[weaponKey], x, y, dir, 'player');
+        }
+    }
+}
+
+class AttackHeavyState extends State {
+    constructor(machine) {
+        super(machine);
+        this.timer = 0;
+        this.phase = 'anticipation'; // anticipation, active, recovery
+        this.hitEnemies = new Set();
+        this.startRotation = new THREE.Euler();
+        this.targetRotation = new THREE.Euler();
+    }
+
+    enter() {
+        this.timer = 0;
+        this.phase = 'anticipation';
+        this.hitEnemies.clear();
+
+        // Stop movement
+        if (this.owner.isGrounded) {
+            this.owner.velocity.x = 0;
+        }
+
+        // Visual setup - Wind up
+        if (this.owner.weaponMesh) {
+            this.startRotation.copy(this.owner.weaponMesh.rotation);
+            // Wind up backwards
+            this.owner.weaponMesh.rotation.z = -Math.PI / 2;
+        }
+
+        // Flash cues
+        this.owner.bodyMesh.material.color.setHex(0xffaa00); // Orange charging
+    }
+
+    update(dt) {
+        this.timer += dt;
+        const config = GameConfig.attacks.heavy;
+
+        // Determine Phase
+        if (this.timer < config.anticipation) {
+            this.phase = 'anticipation';
+        } else if (this.timer < config.anticipation + config.active) {
+            // TRANSITION TO ACTIVE
+            if (this.phase !== 'active') {
+                this.phase = 'active';
+                this.owner.bodyMesh.material.color.setHex(0xff0000); // Red hot swing
+
+                // Swing visuals
+                if (this.owner.weaponMesh) {
+                    this.owner.weaponMesh.rotation.z = Math.PI / 2; // Swing forward
+                }
+            }
+            this.checkCollisions();
+        } else if (this.timer < config.anticipation + config.active + config.recovery) {
+            // TRANSITION TO RECOVERY
+            if (this.phase !== 'recovery') {
+                this.phase = 'recovery';
+                this.owner.bodyMesh.material.color.setHex(0xaa4444); // Cooling down
+
+                // Return visuals
+                if (this.owner.weaponMesh) {
+                    this.owner.weaponMesh.rotation.z = Math.PI / 4; // Back to idle
+                }
+            }
+        } else {
+            // FINISHED
+            if (this.owner.isGrounded) {
+                this.machine.changeState('IDLE');
+            } else {
+                this.machine.changeState('JUMP_FALL');
+            }
+            return;
+        }
+    }
+
+    checkCollisions() {
+        // Only run if we have a game reference
+        if (!this.owner.game) return;
+
+        const enemies = this.owner.game.enemies;
+        const hitboxConfig = GameConfig.collision.attackHitboxes.heavySwing;
+
+        // Calculate Hitbox in world space
+        const facingDir = this.owner.facingRight ? 1 : -1;
+        const centerX = this.owner.position.x + (hitboxConfig.offset.x * facingDir);
+        const centerY = this.owner.position.y + hitboxConfig.offset.y;
+
+        // Create a Box3 for the attack
+        const attackBox = new THREE.Box3();
+        const halfWidth = hitboxConfig.width / 2;
+        const halfHeight = hitboxConfig.height / 2;
+
+        attackBox.min.set(centerX - halfWidth, centerY - halfHeight, -1);
+        attackBox.max.set(centerX + halfWidth, centerY + halfHeight, 1);
+
+        // Debug visual (optional, skipped for now)
+
+        // Check against all enemies
+        for (const enemy of enemies) {
+            if (!enemy.isActive || this.hitEnemies.has(enemy)) continue;
+
+            const enemyBox = enemy.getBounds();
+            if (attackBox.intersectsBox(enemyBox)) {
+                // HIT!
+                this.hitEnemies.add(enemy);
+                this.applyDamage(enemy);
+            }
+        }
+    }
+
+    applyDamage(enemy) {
+        console.log(`⚔️ Heavy Hit on ${enemy.config.name}!`);
+
+        const config = GameConfig.attacks.heavy;
+
+        // Damage
+        enemy.takeDamage(config.damage);
+
+        // Knockback logic
+        const dir = this.owner.facingRight ? 1 : -1;
+        enemy.velocity.x = dir * config.knockback;
+        enemy.velocity.y = 2; // Little pop up
+        enemy.isGrounded = false; // Lift them off ground
+
+        // Camera Shake effect if available
+        if (this.owner.game.shakeCamera) {
+            this.owner.game.shakeCamera(0.3, 0.15);
+        }
+
+        // Particle effect
+        if (this.owner.game.particleManager) {
+            this.owner.game.particleManager.emit({
+                position: enemy.position,
+                count: 12,
+                color: 'hit', // White/yellow spark
+                scale: 2.0
+            });
+        }
+    }
+
+    exit() {
+        // Reset color
+        if (this.owner.bodyMesh) {
+            this.owner.bodyMesh.material.color.setHex(0xaa2222);
+        }
+        // Reset weapon rotation
+        if (this.owner.weaponMesh) {
+            this.owner.weaponMesh.rotation.set(Math.PI / 4, 0, 0); // Approximate idle pos
+            // Note: real idle pos was: position.set(0.4, 0.8, 0.3); rotation.x = Math.PI / 4;
+            // Here we just messed with Z, so let's be careful.
+            // In enter(), we modified 'rotation.z'. The original code had 'rotation.x = Math.PI/4'.
+            // So we probably want:
+            this.owner.weaponMesh.rotation.x = Math.PI / 4;
+            this.owner.weaponMesh.rotation.y = 0;
+            this.owner.weaponMesh.rotation.z = 0;
         }
     }
 }
