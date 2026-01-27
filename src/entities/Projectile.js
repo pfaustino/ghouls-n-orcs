@@ -7,6 +7,8 @@
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
+import { WeaponFactory } from './WeaponFactory.js';
+
 export class Projectile {
     constructor(scene, config, x, y, direction, owner) {
         this.scene = scene;
@@ -25,6 +27,12 @@ export class Projectile {
             0
         );
 
+        // Setup Lob Trajectory (Torch)
+        if (config.trajectory === 'lob') {
+            this.velocity.y = 8; // Default lob up
+            this.velocity.x = config.speed * direction * 0.7; // Slower X
+        }
+
         // Mesh
         this.mesh = this.createMesh(config);
         this.mesh.position.copy(this.position);
@@ -37,38 +45,7 @@ export class Projectile {
     }
 
     createMesh(config) {
-        // Placeholder visuals until models are added
-        let geometry;
-        let color;
-
-        switch (config.sprite) {
-            case 'spear':
-                geometry = new THREE.BoxGeometry(0.8, 0.1, 0.1); // Long stick
-                color = 0xccccff;
-                break;
-            case 'knife':
-                geometry = new THREE.BoxGeometry(0.4, 0.1, 0.05); // Short stick
-                color = 0xaaaaaa;
-                break;
-            case 'axe':
-                geometry = new THREE.BoxGeometry(0.3, 0.3, 0.1); // Square/Head
-                color = 0x884444;
-                break;
-            default:
-                geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-                color = 0xffff00;
-        }
-
-        const material = new THREE.MeshStandardMaterial({
-            color: color,
-            emissive: color,
-            emissiveIntensity: 0.5
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-
-        return mesh;
+        return WeaponFactory.createMesh(config.sprite);
     }
 
     fixedUpdate(dt) {
@@ -107,8 +84,21 @@ export class Projectile {
         this.isActive = false;
         if (this.mesh) {
             this.scene.remove(this.mesh);
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
+
+            // Clean up resources (Handle Groups)
+            this.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+
             this.mesh = null;
         }
     }

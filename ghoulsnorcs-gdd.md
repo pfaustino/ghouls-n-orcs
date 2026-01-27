@@ -236,69 +236,135 @@ Early enemies kill in 2–3 hits, late enemies in 1–2.
 
 Bosses are pattern-heavy, with small safe windows requiring precise timing.
 
-**** Example GDD outline (ready to fill)
-You can expand this into a full document:
+**** Game Design Document (Live)
 
-1. Game overview
+1. Game Overview
 
-1.1 Elevator pitch
+1.1 Elevator Pitch
+"Ghouls n Orcs" is a punishing 2.5D action-platformer where a cursed knight ("Sir Gron") battles through a gothic nightmare to slay the Orc Warlord. Every jump is committed, every attack has weight, and safety is a lie. It combines the deliberate mechanical difficulty of *Ghosts 'n Goblins* with the fluid readability of modern 3D animation.
 
-1.2 Target audience
+1.2 Target Audience
+*   Fans of "Nintendo Hard" retro platformers (Castlevania, Ghouls 'n Ghosts).
+*   Speedrunners looking for optimization depth.
+*   Players who enjoy high-stakes, pattern-recognition combat.
 
-1.3 Platform and tech
+1.3 Platform and Technology
+*   **Platform**: Desktop Web (Chrome, Firefox, Edge).
+*   **Engine**: Custom Three.js-based framework.
+*   **Input**: Keyboard (primary) and Gamepad (supported).
 
-2. Core gameplay
+2. Core Gameplay
 
-2.1 Core loop
+2.1 Core Loop
+1.  **Traverse**: Run and jump through linear levels filled with platforming hazards and enemy ambushes.
+2.  **Combat**: Engage enemies using ranged weapons (for safety) and heavy melee (for crowd control).
+3.  **Survive**: Avoid damage to keep armor intact; taking hits strips armor until death.
+4.  **Progress**: Reach invisible checkpoints to save progress; defeat the Stage Boss to advance.
 
-2.2 Player verbs (run, jump, throw, heavy attack, guard/dodge)
+2.2 Player Verbs
+*   **Run**: Constant speed with slight acceleration/deceleration.
+*   **Jump**: Committed physics arc (no air control changes once airborne).
+*   **Throw (Primary)**: Throws currently equipped weapon (Spear, Knife, Axe, Torch).
+*   **Heavy Attack (Secondary)**: A powerful overhead melee swing with wind-up frames. High damage, high knockback.
+*   **Guard/Dodge**: A defensive maneuver to block or roll through attacks (stamina/cooldown based).
 
-2.3 Win/lose conditions
+2.3 Win/Lose Conditions
+*   **Win**: Defeat the Orc Warlord at the end of the stage.
+*   **Lose (Death)**: Taking damage while unarmored. Respawns at last checkpoint.
+*   **Lose (Game Over)**: Losing all lives resets the level.
 
 3. Controls and UX
 
-3.1 Input mappings
+3.1 Input Mappings
+| Action | Keyboard | Gamepad |
+| :--- | :--- | :--- |
+| Move | WASD / Arrows | D-Pad / Left Stick |
+| Jump | Space | Bottom Face Button (A/X) |
+| Attack (Throw) | J | Left Face Button (X/Square) |
+| Heavy Attack | K | Top Face Button (Y/Triangle) |
+| Guard | L | Right Face Button (B/Circle) |
+| Swap Weapon | Q / E | Bumpers (L1/R1) |
+| Pause | Esc | Start |
 
-3.2 HUD elements (HP/armor states, lives, weapon icon, moon timer)
+3.2 HUD Elements
+*   **Armor Status**: Visualized directly on the player model (pieces break off).
+*   **Lives**: Counter in the top left.
+*   **Weapon**: Icon showing currently equipped projectile.
+*   **Boss Health**: Large bar at bottom of screen (during boss fights).
 
-3.3 Menus
+4. Characters and Enemies
 
-4. Characters and enemies
+4.1 Player: Sir Gron
+*   **Visual**: Heavy plate armor, red cape, "Rayman-style" disjointed limbs for clear animation reading.
+*   **Stats**: 3 Armor Points (Helmet, Chest, Unarmored).
 
-4.1 Player stats and progression
+4.2 Enemy Roster
+*   **Ghoul (Shambling)**: Slow walker, simple contact damage.
+*   **Ghoul (Crawler)**: Low profile, fast movement, jumps from pits. Hard to hit with high weapons.
+*   **Orc (Grunt)**: Uses a shield. Blocks frontal projectiles. Weakness: Jump attacks or Heavy melee.
+*   **Orc (Berserker)**: Fast, high-damage. Charges the player and performs overhead slams.
+*   **Gargoyle**: Aerial enemy, swoops in arcs (Planned).
 
-4.2 Enemy roster with behaviors
+4.3 Boss: Orc Warlord
+*   **Description**: Giant armored Orc with a massive axe and golden shield.
+*   **Arena**: Enclosed boss chamber at the end of the Haunted Forest.
+*   **Behaviors**:
+    *   **Charge**: Rapid movement across the screen.
+    *   **Smash**: Area-of-effect ground pound.
+    *   **Block**: Uses shield to negate damage during idle phases.
 
-4.3 Boss breakdowns
+5. Level and World Design
 
-5. Level and world design
+5.1 Stage 1: The Outskirts
+*   **Theme**: Graveyard transitioning into a militarized Orc Encampment.
+*   **Length**: ~400 Units (Extended length).
 
-5.1 Stage themes
+5.2 Key Set-Pieces
+*   **The Watchtower**: A vertical climb segment with Orc Berserkers on narrow platforms.
+*   **The Crumbling Bridge**: A platforming gauntlet with floating/moving platforms over a death pit.
+*   **The Haunted Forest**: Dense terrain with verticality ("Tree platforms") and hidden Crawler ambushes.
 
-5.2 Key set-pieces
-
-5.3 Difficulty curve
+5.3 Difficulty Curve
+*   **Start**: Simple Ghouls, flat terrain.
+*   **Mid**: Introduction of Shields (Orcs) and Pits.
+*   **End**: High density of elite enemies (Berserkers) + Boss fight.
 
 6. Systems
 
-6.1 Weapons and items
+6.1 Weapons
+*   **Spear**: Straight flight, medium speed, avg damage. (Starter)
+*   **Dagger**: High speed, low damage, rapid fire.
+*   **Axe**: Arced flight (hit enemies above), high damage.
+*   **Torch**: Lobbed arc, creates fire on ground (AOE).
 
-6.2 Checkpoints and lives
+6.2 Checkpoints & Lives
+*   Fixed checkpoints at key transition areas (e.g., before the Bridge, before the Boss).
+*   Lives system currently infinite for testing (v0.9), planned to be limited (3-5).
 
-6.3 Scoring and unlocks
+7. Art and Animation
 
-7. Art and animation
+7.1 Style
+*   **Vibe**: "Gothic Low-Poly".
+*   **Lighting**: Strong Rim Lighting (purple/blue) to make characters pop against dark backgrounds.
+*   **Palette**: Dark greys, purples, and deep greens, punctuated by bright red (enemies/danger) and gold (loot).
 
-7.1 Style reference
+7.2 Technical Constraints
+*   **Poly Count**: Low (<2000 per character) for performance.
+*   **Materials**: Single pass standard materials with emissive flashes for hit feedback.
 
-7.2 Rig specifications
+8. Technical Implementation
 
-7.3 Animation list and priorities
+8.1 Architecture
+*   `Game`: Main entry point, loop management.
+*   `SceneManager`: Three.js scene setup, lights, parallax.
+*   `LevelManager`: JSON-based level loading, spawning, platform generation.
+*   `InputManager`: Event-based input handling with buffering.
+*   `StateMachine`: Finite State Machine for all entity logic (Player and Enemy).
 
-8. Technical
+8.2 Asset Pipeline
+*   Current: Procedural geometry generation (BoxGeometry, etc.) for rapid prototyping.
+*   Future: GLTF loader for externally modeled assets.
 
-8.1 three.js scene graph structure
-
-8.2 Asset pipeline (export from DCC to glTF, load into three.js)
-
-8.3 Performance targets
+8.3 Performance Targets
+*   **Target**: 60 FPS on standard desktop browsers.
+*   **Optimization**: Object pooling for projectiles and particles; geometry instancing for repeated environmental props.

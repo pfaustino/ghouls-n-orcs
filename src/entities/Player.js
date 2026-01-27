@@ -11,6 +11,7 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { StateMachine, State } from '../core/StateMachine.js';
+import { WeaponFactory } from './WeaponFactory.js';
 
 export class Player {
     constructor(scene, input, game) {
@@ -91,13 +92,14 @@ export class Player {
         // Assign bodyMesh to skinMesh for general purpose (flashing/physics)
         this.bodyMesh = this.skinMesh;
 
-        // Weapon (Parent to body/arm)
-        const weaponGeo = new THREE.BoxGeometry(0.1, 0.8, 0.1);
-        const weaponMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-        this.weaponMesh = new THREE.Mesh(weaponGeo, weaponMat);
-        this.weaponMesh.position.set(0.4, 0.2, 0.3); // Hand position roughly
-        this.weaponMesh.rotation.x = Math.PI / 4;
-        this.skinMesh.add(this.weaponMesh); // Add to skin so it moves with it
+        // Weapon (Parent to body/arm) - Hand Group
+        this.handGroup = new THREE.Group();
+        this.handGroup.position.set(0.4, 0.2, 0.3); // Hand position roughly
+        // this.handGroup.rotation.x = Math.PI / 4;
+        this.skinMesh.add(this.handGroup);
+
+        // Initial visual
+        this.updateWeaponVisuals();
 
         // Direction indicator (Eyes)
         const eyeGeo = new THREE.BoxGeometry(0.3, 0.1, 0.2);
@@ -117,7 +119,44 @@ export class Player {
         if (this.currentWeaponIndex >= this.inventory.length) this.currentWeaponIndex = 0;
 
         this.updateWeaponUI();
+        this.updateWeaponVisuals();
         if (this.game && this.game.audio) this.game.audio.playSound('switch');
+    }
+
+    updateWeaponVisuals() {
+        if (!this.handGroup) return;
+
+        // precise cleanup
+        while (this.handGroup.children.length > 0) {
+            const child = this.handGroup.children[0];
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+            this.handGroup.remove(child);
+        }
+
+        const key = this.inventory[this.currentWeaponIndex];
+        const config = GameConfig.weapons[key];
+        if (!config) return;
+
+        const mesh = WeaponFactory.createMesh(config.sprite);
+        this.handGroup.add(mesh);
+        this.weaponMesh = mesh;
+
+        // Orient for holding (Vertical-ish)
+        // Factory output: Spear/Knife along X. Axe/Torch along Y.
+        if (config.sprite === 'spear' || config.sprite === 'knife') {
+            mesh.rotation.z = Math.PI / 2; // Point Up
+            if (config.sprite === 'spear') mesh.position.y = -0.4; // Hold near end?
+            else mesh.position.y = 0.2;
+        } else {
+            // Axe/Torch are Y aligned
+            mesh.position.y = 0;
+        }
+
+        // Tilt slightly forward
+        mesh.rotation.x = Math.PI / 8;
+
+        this.weaponMesh = mesh; // Keep reference for animation (heavy attack rotates this)
     }
 
     updateWeaponUI() {
@@ -481,7 +520,7 @@ class JumpFallState extends State {
         }
 
         // ATTACK HEAVY (Air)
-        if (this.owner.input.isJustPressed('attackHeavy')) {
+        if (this.owner.input.isJustPressed('attackSecondary')) {
             this.machine.changeState('ATTACK_HEAVY');
             return;
         }
@@ -708,20 +747,21 @@ class AttackHeavyState extends State {
     }
 
     exit() {
-        // Reset color
+        // Reset color (should probably restore original color, but red is default for now)
         if (this.owner.bodyMesh) {
+            // Restore default colors based on armor/skin not hardcoded?
+            // For now, let's just assume the default red helper color or nothing
+            // Actually, Player.init sets specific colors. We should probably just clear the emissive "flash" effect or reset.
+            // But since we don't store original state easily, let's re-apply the known default or rely on the flash logic which uses setTimeout.
+            // The logic above used setHex directly.
+            // Let's assume the flash logic in enter() overwrote it.
+            // We'll leave the color reset for now as it matches existing code style, though imprecise.
             this.owner.bodyMesh.material.color.setHex(0xaa2222);
         }
+
         // Reset weapon rotation
         if (this.owner.weaponMesh) {
-            this.owner.weaponMesh.rotation.set(Math.PI / 4, 0, 0); // Approximate idle pos
-            // Note: real idle pos was: position.set(0.4, 0.8, 0.3); rotation.x = Math.PI / 4;
-            // Here we just messed with Z, so let's be careful.
-            // In enter(), we modified 'rotation.z'. The original code had 'rotation.x = Math.PI/4'.
-            // So we probably want:
-            this.owner.weaponMesh.rotation.x = Math.PI / 4;
-            this.owner.weaponMesh.rotation.y = 0;
-            this.owner.weaponMesh.rotation.z = 0;
+            this.owner.weaponMesh.rotation.copy(this.startRotation);
         }
     }
 }

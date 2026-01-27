@@ -4,6 +4,7 @@ import { GameConfig } from '../config/GameConfig.js';
 import { Levels } from '../config/Levels.js';
 import { Ghoul } from '../entities/Ghoul.js';
 import { Orc } from '../entities/Orc.js';
+import { OrcWarlord } from '../entities/OrcWarlord.js';
 
 export class LevelManager {
     constructor(game) {
@@ -103,8 +104,8 @@ export class LevelManager {
             }
         });
 
-        // Check Level End
-        if (this.currentLevel) {
+        // Check Level End (Only if NO boss)
+        if (this.currentLevel && !this.currentLevel.hasBoss) {
             const lastPlat = this.currentLevel.platforms[this.currentLevel.platforms.length - 1];
             const levelEndX = lastPlat.x + (lastPlat.w / 2);
 
@@ -160,7 +161,9 @@ export class LevelManager {
             console.log(`💀 Spawning ${config.name} at ${spawnerInfo.x}, ${spawnY}`);
 
             let enemy;
-            if (spawnerInfo.type.startsWith('orc')) {
+            if (spawnerInfo.type === 'orcWarlord') {
+                enemy = new OrcWarlord(this.scene, config, spawnerInfo.x, spawnY, this.game);
+            } else if (spawnerInfo.type.startsWith('orc')) {
                 enemy = new Orc(this.scene, config, spawnerInfo.x, spawnY, this.game);
             } else {
                 enemy = new Ghoul(this.scene, config, spawnerInfo.x, spawnY, this.game);

@@ -69,11 +69,48 @@ export class Enemy {
     }
 
     die() {
+        if (!this.isActive) return;
         this.isActive = false;
         this.mesh.visible = false;
         console.log(`${this.config.name} died!`);
 
         if (this.game && this.game.audio) this.game.audio.playSound('enemy_death');
+
+        // Particles
+        if (this.game.particleManager) {
+            const center = this.position.clone().add(new THREE.Vector3(0, 1.0, 0)); // Center of mass
+
+            // Determine blood type
+            let bloodType = 'blood';
+            // Simple string check on name or config type
+            if (this.config.name.includes('Ghoul')) bloodType = 'green_blood';
+
+            // Blood burst
+            this.game.particleManager.emit({
+                position: center,
+                count: 12,
+                color: bloodType,
+                scale: 1.5
+            });
+
+            // Bone chunks
+            this.game.particleManager.emit({
+                position: center,
+                count: 4,
+                color: 'bone',
+                scale: 1.0
+            });
+
+            // Armor scraps for Orcs
+            if (this.config.name.includes('Orc')) {
+                this.game.particleManager.emit({
+                    position: center,
+                    count: 5,
+                    color: 'armor',
+                    scale: 1.5
+                });
+            }
+        }
 
         // Remove from scene (simple version)
         this.scene.remove(this.mesh);
@@ -94,6 +131,7 @@ export class Enemy {
         // Ground Collision
         if (this.game.levelManager) {
             this.isGrounded = this.game.levelManager.checkGroundCollision(this);
+            this.game.levelManager.checkWallCollision(this);
         } else if (this.position.y <= 0) {
             this.position.y = 0;
             this.velocity.y = 0;
@@ -102,15 +140,6 @@ export class Enemy {
 
         // Update Mesh
         this.mesh.position.copy(this.position);
-
-        // Face player
-        if (this.game.player) {
-            const dx = this.game.player.position.x - this.position.x;
-            if (Math.abs(dx) > 0.1) {
-                this.facingRight = dx > 0;
-                this.mesh.rotation.y = this.facingRight ? 0 : Math.PI; // FLip logic depends on model
-            }
-        }
 
         // Update AI
         this.fsm.update(dt);

@@ -173,6 +173,23 @@ export const GameConfig = {
             telegraphDuration: 0.8,  // Big windup
             attackDuration: 0.15,
             recoveryDuration: 1.2    // Very punishable
+        },
+
+        // Boss
+        orcWarlord: {
+            name: 'Ironbound Warlord',
+            health: 20,
+            speed: 2.0,
+            chargeSpeed: 9.0,
+            damage: 2, // 1 heart usually, maybe 2 creates tension
+            detectionRange: 20,
+            attackRange: 3.5, // Giant reach
+            telegraphDuration: 1.2,
+            attackDuration: 0.4,
+            recoveryDuration: 2.5,
+            hasShield: true,
+            shieldAngles: { min: -60, max: 60 },
+            isBoss: true
         }
     },
 
