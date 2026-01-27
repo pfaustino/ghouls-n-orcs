@@ -1,17 +1,46 @@
-
 export class AudioManager {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.value = 0.3;
         this.masterGain.connect(this.ctx.destination);
+
         this.enabled = true;
+        this.sounds = new Map(); // SFX buffers
+        this.music = new Map();  // Music tracks (HTMLAudio)
+        this.currentMusic = null;
+    }
+
+    async loadSound(name, url) {
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            this.sounds.set(name, audioBuffer);
+            console.log(`🔊 Loaded Sound: ${name}`);
+        } catch (e) {
+            console.warn(`⚠️ Failed to load sound: ${name} (${url})`, e);
+        }
     }
 
     playSound(name) {
         if (!this.enabled) return;
         if (this.ctx.state === 'suspended') this.ctx.resume();
 
+        // 1. Try playing loaded file
+        if (this.sounds.has(name)) {
+            const source = this.ctx.createBufferSource();
+            source.buffer = this.sounds.get(name);
+            source.connect(this.masterGain);
+            source.start();
+            return;
+        }
+
+        // 2. Fallback to Synth
+        this.playSynthFallback(name);
+    }
+
+    playSynthFallback(name) {
         switch (name) {
             case 'jump':
                 this.playTone(150, 600, 0.1, 'square', 0.1);
@@ -27,7 +56,7 @@ export class AudioManager {
                 this.playNoise(0.1);
                 break;
             case 'armor_break':
-                this.playTone(800, 100, 0.3, 'sawtooth', 0.2); // "Clang"
+                this.playTone(800, 100, 0.3, 'sawtooth', 0.2);
                 this.playNoise(0.2);
                 break;
             case 'switch':
@@ -42,6 +71,7 @@ export class AudioManager {
         }
     }
 
+    // --- SYNTH METHODS ---
     playTone(startFreq, endFreq, duration, type, vol) {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();

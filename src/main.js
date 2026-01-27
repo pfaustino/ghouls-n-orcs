@@ -203,12 +203,20 @@ class Game {
      * Load all game assets (models, textures, audio)
      */
     async loadAssets() {
-        // For now, we'll use procedural placeholder models
-        // This will be replaced with glTF loading later
-        console.log('📦 Loading assets (using placeholders for now)');
+        // Load Real GLB models
+        console.log('📦 Loading 3D Assets...');
+        const models = ['Skeleton.glb', 'Zombie.glb', 'Orc.glb', 'Goleling.glb', 'Characters Shaun.glb'];
+
+        // This is a placeholder for the actual GLTF loader implementation
+        // For now we just acknowledge they exist in the folder
+        // In the next session we will wire up the GLTFLoader
+
+        // Audio Loading (Prepare for assets)
+        // await this.audio.loadSound('jump', './assets/audio/jump.mp3'); 
+        // await this.audio.loadSound('bgm', './assets/audio/music_stage1.mp3');
 
         // Simulate loading time for demonstration
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     /**
