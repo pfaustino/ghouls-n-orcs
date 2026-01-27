@@ -69,6 +69,13 @@ export class Player {
         this.mesh.add(this.model);
         this.bodyMesh = this.model;
 
+        // Clone materials to allow independent flashing/coloring
+        this.model.traverse((child) => {
+            if (child.isMesh && child.material) {
+                child.material = child.material.clone();
+            }
+        });
+
         // Transform (like Ghoul.js)
         this.model.rotation.y = Math.PI / 2; // Face right (opposite of enemy)
         this.model.scale.setScalar(1.5);
@@ -98,8 +105,30 @@ export class Player {
                 const parts = name.split('|');
                 name = parts[parts.length - 1];
             }
-            this.animations[name.toLowerCase()] = clip;
-            console.log(`🎥 Anim: ${name.toLowerCase()}`);
+            let lowerName = name.toLowerCase();
+            this.animations[lowerName] = clip;
+            console.log(`🎥 Anim: ${lowerName}`);
+
+            // Mappings for different models
+            // Hooded Adventurer
+            if (lowerName === 'sword_slash') this.animations['attack_melee'] = clip;
+            if (lowerName === 'punch_right') this.animations['attack_throw'] = clip;
+
+            // Fallbacks: Use RUN for JUMP if no jump exists (e.g. Hooded Adventurer)
+            if (lowerName === 'run' && !this.animations['jump']) {
+                this.animations['jump'] = clip;
+            }
+
+            if (lowerName === 'idle_sword') this.animations['idle'] = clip; // Better stance with weapon
+
+            // Standard / Zombie fallback
+            if (lowerName === 'attack') {
+                this.animations['attack_throw'] = clip;
+                this.animations['attack_melee'] = clip;
+            }
+
+            if (lowerName === 'jump') this.animations['jump'] = clip; // Explicit map
+            if (lowerName === 'hitrecieve') this.animations['hit'] = clip;
         });
 
         // Hide internal weapon if present
@@ -284,6 +313,8 @@ export class Player {
         this.fsm.addState('JUMP_FALL', new JumpFallState(this.fsm));
         this.fsm.addState('ATTACK_THROW', new AttackThrowState(this.fsm));
         this.fsm.addState('ATTACK_HEAVY', new AttackHeavyState(this.fsm));
+        this.fsm.addState('EMOTE', new EmoteState(this.fsm));
+        this.fsm.addState('EMOTE', new EmoteState(this.fsm));
         this.fsm.addState('DEATH', new DeathState(this.fsm));
     }
 
@@ -514,6 +545,29 @@ class DeathState extends State {
     }
 }
 
+class EmoteState extends State {
+    enter() {
+        this.owner.velocity.set(0, 0, 0);
+        this.owner.playAnim('wave');
+        this.timer = 0;
+        this.duration = 2.0; // Default duration
+
+        if (this.owner.currentAction) {
+            this.owner.currentAction.setLoop(THREE.LoopOnce);
+            this.owner.currentAction.clampWhenFinished = true;
+            // Use clip duration if available, but at least 1s
+            const clipDuration = this.owner.currentAction.getClip().duration;
+            if (clipDuration > 0) this.duration = clipDuration;
+        }
+    }
+    update(dt) {
+        this.timer += dt;
+        if (this.timer >= this.duration) {
+            this.machine.changeState('IDLE');
+        }
+    }
+}
+
 // =========================================================================
 // PLAYER STATES
 // =========================================================================
@@ -542,6 +596,12 @@ class IdleState extends State {
         // ATTACK HEAVY
         if (this.owner.input.isJustPressed('attackSecondary')) {
             this.machine.changeState('ATTACK_HEAVY');
+            return;
+        }
+
+        // EMOTE (L / Guard)
+        if (this.owner.input.isJustPressed('guard')) {
+            this.machine.changeState('EMOTE');
             return;
         }
 
@@ -604,6 +664,13 @@ class JumpRiseState extends State {
         this.owner.velocity.y = GameConfig.player.jumpVelocity;
         this.owner.isGrounded = false;
         this.owner.playAnim('jump');
+
+        // Ensure jump/roll loops (especially for generic roll animations mapped to jump)
+        if (this.owner.currentAction) {
+            this.owner.currentAction.setLoop(THREE.LoopRepeat);
+            this.owner.currentAction.play();
+        }
+
         if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('jump');
     }
 
@@ -681,7 +748,7 @@ class AttackThrowState extends State {
         this.animPhase = 'anticipation';
 
         // Play attack animation
-        this.owner.playAnim('attack');
+        this.owner.playAnim('attack_throw');
 
         // Stop movement if on ground (commit to attack)
         if (this.owner.isGrounded) {
@@ -730,7 +797,7 @@ class AttackThrowState extends State {
         // Spawn actual projectile
         const offset = this.owner.facingRight ? 0.8 : -0.8;
         const x = this.owner.position.x + offset;
-        const y = this.owner.position.y + 1.2; // Shoulder height
+        const y = this.owner.position.y + 2.2; // Shoulder height (Raised for Adventurer scaled)
         const dir = this.owner.facingRight ? 1 : -1;
 
         // Use equipped weapon
@@ -757,7 +824,7 @@ class AttackHeavyState extends State {
         this.hitEnemies.clear();
 
         // Play attack animation
-        this.owner.playAnim('attack');
+        this.owner.playAnim('attack_melee');
 
         // Stop movement
         if (this.owner.isGrounded) {

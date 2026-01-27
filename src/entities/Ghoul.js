@@ -31,6 +31,7 @@ export class Ghoul extends Enemy {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
+                    if (child.material) child.material = child.material.clone();
                 }
             });
 

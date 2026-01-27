@@ -221,7 +221,7 @@ class Game {
 
         // Asset Manifest
         const models = {
-            'player': 'Zombie.glb',
+            'player': 'Hooded Adventurer.glb',
             'ghoul': 'Zombie.glb',
             'orc': 'Orc.glb',
             'skeleton': 'Skeleton.glb',
