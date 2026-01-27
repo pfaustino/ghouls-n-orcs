@@ -10,7 +10,8 @@
  * - ES modules for clean dependency management
  */
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { SceneManager } from './core/SceneManager.js';
 import { LevelManager } from './core/LevelManager.js';
 import { ParticleManager } from './core/ParticleManager.js';
@@ -37,6 +38,12 @@ class Game {
         this.particleManager = null;
         this.inputManager = null;
         this.audio = null;
+
+        // Assets
+        this.assets = {
+            models: {},
+            audio: {}
+        };
 
         // Entities
         this.player = null;
@@ -102,7 +109,10 @@ class Game {
             await new Promise(resolve => setTimeout(resolve, 500));
 
             // Hide loading screen
-            document.getElementById('loading-screen').classList.add('hidden');
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) loadingScreen.classList.add('hidden');
+            }, 500);
 
             // Setup click listener for audio resume context
             document.addEventListener('click', () => {
@@ -117,8 +127,9 @@ class Game {
 
             console.log('✅ Game initialized successfully');
         } catch (error) {
-            console.error('❌ Failed to initialize game:', error);
-            this.updateLoadingProgress(0, `Error: ${error.message}`);
+            console.error('❌ Initialization failed:', error);
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText) loadingText.textContent = 'Error: ' + error.message;
         }
     }
 
@@ -139,14 +150,10 @@ class Game {
     async initRenderer() {
         const container = document.getElementById('game-container');
 
-        this.renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            powerPreference: 'high-performance'
-        });
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
 
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.setClearColor(GameConfig.rendering.clearColor);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -154,6 +161,13 @@ class Game {
 
         // Handle window resize
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    onWindowResize() {
+        if (!this.camera || !this.renderer) return;
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     /**
@@ -171,7 +185,6 @@ class Game {
         );
 
         // Systems
-        // this.inputManager = new InputManager(); // Handled in initInput
         this.audio = new AudioManager();
 
         this.sceneManager = new SceneManager(this);
@@ -182,7 +195,7 @@ class Game {
         await this.sceneManager.init();
 
         // Init Level Manager
-        this.levelManager.loadLevel('graveyard');
+        // this.levelManager.loadLevel('graveyard'); // Move to after assets loaded
 
         // Setup camera - using perspective with narrow FOV for subtle depth
         // This gives us the 2.5D look while maintaining some parallax
@@ -203,20 +216,45 @@ class Game {
      * Load all game assets (models, textures, audio)
      */
     async loadAssets() {
-        // Load Real GLB models
         console.log('📦 Loading 3D Assets...');
-        const models = ['Skeleton.glb', 'Zombie.glb', 'Orc.glb', 'Goleling.glb', 'Characters Shaun.glb'];
+        const loader = new GLTFLoader();
 
-        // This is a placeholder for the actual GLTF loader implementation
-        // For now we just acknowledge they exist in the folder
-        // In the next session we will wire up the GLTFLoader
+        // Asset Manifest
+        const models = {
+            'player': 'Zombie.glb',
+            'ghoul': 'Zombie.glb',
+            'orc': 'Orc.glb',
+            'skeleton': 'Skeleton.glb',
+            'gargoyle': 'Goleling.glb'
+        };
 
-        // Audio Loading (Prepare for assets)
-        // await this.audio.loadSound('jump', './assets/audio/jump.mp3'); 
-        // await this.audio.loadSound('bgm', './assets/audio/music_stage1.mp3');
+        const loadModel = (key, file) => {
+            return new Promise((resolve, reject) => {
+                loader.load(
+                    `./assets/${file}`,
+                    (gltf) => {
+                        this.assets.models[key] = gltf;
+                        console.log(`✅ Loaded ${key}`);
+                        resolve();
+                    },
+                    (xhr) => {
+                        // console.log((xhr.loaded / xhr.total * 100) + '% loaded'); 
+                    },
+                    (error) => {
+                        console.error(`❌ Failed loading ${key}:`, error);
+                        // Resolve anyway to not block game, just warn
+                        resolve();
+                    }
+                );
+            });
+        };
 
-        // Simulate loading time for demonstration
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Load all models in parallel
+        const promises = Object.entries(models).map(([key, file]) => loadModel(key, file));
+        await Promise.all(promises);
+
+        // After assets load, load level
+        this.levelManager.loadLevel('graveyard');
     }
 
     /**
@@ -271,6 +309,44 @@ class Game {
 
         const enemy = new Ghoul(this.scene, config, x, y, this);
         this.enemies.push(enemy);
+    }
+
+    /**
+     * Restart game without reloading page (preserves assets)
+     */
+    restartGame() {
+        console.log('🔄 Restarting game...');
+
+        // Hide game over UI
+        const gameOverUI = document.getElementById('game-over-screen');
+        if (gameOverUI) {
+            gameOverUI.classList.add('hidden');
+            gameOverUI.style.opacity = ''; // Reset inline opacity
+        }
+
+        // Clean up existing enemies
+        for (const enemy of this.enemies) {
+            if (enemy.mesh) this.scene.remove(enemy.mesh);
+        }
+        this.enemies = [];
+
+        // Clean up player
+        if (this.player && this.player.mesh) {
+            this.scene.remove(this.player.mesh);
+        }
+
+        // Reinitialize player
+        this.player = new Player(this.scene, this.inputManager, this);
+        this.player.init().then(() => {
+            this.player.setPosition(0, 5, 0);
+        });
+
+        // Reload level
+        if (this.levelManager) {
+            this.levelManager.restartLevel();
+        }
+
+        console.log('✅ Game restarted');
     }
 
     /**
@@ -361,6 +437,11 @@ class Game {
 
             // Camera follows player
             this.updateCamera(dt);
+        }
+
+        // Update enemies (animations)
+        for (const enemy of this.enemies) {
+            enemy.update(dt);
         }
 
         // Update scene (parallax, effects)

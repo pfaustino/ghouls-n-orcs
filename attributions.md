@@ -1,1 +1,1 @@
-Zombie, Orc, Shaun, Goleling, Skeleton by Quaternius
+Zombie, Orc, Shaun, Goleling, Hooded Adventurer by Quaternius

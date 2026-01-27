@@ -65,6 +65,12 @@ export class AudioManager {
             case 'enemy_death':
                 this.playTone(200, 50, 0.3, 'sawtooth', 0.15);
                 break;
+            case 'death':
+                // Player death - dramatic low rumble
+                this.playTone(150, 30, 0.8, 'sawtooth', 0.25);
+                this.playTone(100, 20, 1.0, 'sine', 0.15);
+                this.playNoise(0.3);
+                break;
             case 'victory':
                 this.playMelody();
                 break;

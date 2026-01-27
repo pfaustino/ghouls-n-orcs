@@ -38,6 +38,16 @@ export class LevelManager {
         this.setupSpawners(data.spawners);
     }
 
+    restartLevel() {
+        if (!this.currentLevel) return;
+
+        console.log(`🔄 Restarting level: ${this.currentLevel.name}`);
+
+        // Reset spawners (keep platforms)
+        this.spawners = [];
+        this.setupSpawners(this.currentLevel.spawners);
+    }
+
     clearLevel() {
         // Remove meshes
         while (this.levelGroup.children.length > 0) {
@@ -134,7 +144,14 @@ export class LevelManager {
             if (e.key === 'r' || e.key === 'R' || e.type === 'touchstart') {
                 window.removeEventListener('keydown', restartHandler);
                 window.removeEventListener('touchstart', restartHandler);
-                location.reload();
+                if (this.game && this.game.restartGame) {
+                    // Hide victory screen
+                    const victoryUI = document.getElementById('victory-screen');
+                    if (victoryUI) victoryUI.classList.add('hidden');
+                    this.game.restartGame();
+                } else {
+                    location.reload();
+                }
             }
         };
 

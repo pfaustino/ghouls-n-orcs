@@ -9,6 +9,7 @@
  */
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { clone } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/SkeletonUtils.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { StateMachine, State } from '../core/StateMachine.js';
 import { WeaponFactory } from './WeaponFactory.js';
@@ -44,13 +45,101 @@ export class Player {
     }
 
     async init() {
-        // For now, procedurally generate a placeholder character
-        // In the future this would load a glTF file
-        this.createProceduralCharacter();
+        // Try to load GLB if available
+        if (this.game.assets && this.game.assets.models['player']) {
+            this.loadCharacterModel();
+        } else {
+            this.createProceduralCharacter();
+        }
 
         // Set initial state
         this.updateWeaponUI();
         this.fsm.changeState('IDLE');
+    }
+
+    loadCharacterModel() {
+        const gltf = this.game.assets.models['player'];
+        this.mesh = new THREE.Group();
+        this.scene.add(this.mesh);
+
+        // Clone with SkeletonUtils (Correct for SkinnedMesh)
+        this.model = clone(gltf.scene);
+
+        // ADD TO MESH (like Ghoul.js - no internal scale fix)
+        this.mesh.add(this.model);
+        this.bodyMesh = this.model;
+
+        // Transform (like Ghoul.js)
+        this.model.rotation.y = Math.PI / 2; // Face right (opposite of enemy)
+        this.model.scale.setScalar(1.5);
+        this.model.position.y = 0;
+
+        // Shadows & Visibility (Standard)
+        this.model.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                child.frustumCulled = false;
+                if (child.material) {
+                    child.material.transparent = true;
+                    child.material.opacity = 1.0;
+                }
+            }
+        });
+
+        // Setup Animation
+        this.mixer = new THREE.AnimationMixer(this.model);
+        this.animations = {};
+
+        gltf.animations.forEach((clip) => {
+            let name = clip.name;
+            // Format is "EnemyArmature|...|ActionName", take the LAST part
+            if (name.includes('|')) {
+                const parts = name.split('|');
+                name = parts[parts.length - 1];
+            }
+            this.animations[name.toLowerCase()] = clip;
+            console.log(`🎥 Anim: ${name.toLowerCase()}`);
+        });
+
+        // Hide internal weapon if present
+        let weaponBone = this.model.getObjectByName('Weapon');
+        if (weaponBone) weaponBone.visible = false;
+
+        // Weapon Attachment
+        let handBone = null;
+        this.model.traverse(c => {
+            if (!handBone && c.isBone && (c.name.toLowerCase().includes('hand') && c.name.toLowerCase().includes('r'))) {
+                handBone = c;
+            }
+        });
+
+        if (handBone) {
+            console.log(`✅ Found Hand Bone: ${handBone.name}`);
+            this.handGroup = new THREE.Group();
+            this.handGroup.rotation.x = Math.PI / 2;
+            handBone.add(this.handGroup);
+        } else {
+            this.handGroup = new THREE.Group();
+            this.model.add(this.handGroup);
+            this.handGroup.position.set(0.5, 1, 0);
+        }
+
+        // Initialize Weapon visual
+        this.updateWeaponVisuals();
+    }
+
+    playAnim(name) {
+        if (!this.mixer) return;
+        const clip = this.animations[name] || this.animations['idle'] || this.animations['run'];
+        if (clip) {
+            const action = this.mixer.clipAction(clip);
+            if (!action.isRunning()) {
+                this.mixer.stopAllAction();
+                action.reset().play();
+            }
+            this.currentAction = action; // Store for external access
+        }
     }
 
     createProceduralCharacter() {
@@ -71,46 +160,63 @@ export class Player {
         const boxers = new THREE.Mesh(boxersGeo, boxersMat);
         boxers.position.y = -0.2; // Relative to skin center
         this.skinMesh.add(boxers);
-
-        // 2. Armor Group
-        this.armorGroup = new THREE.Group();
-        this.skinMesh.add(this.armorGroup);
-
-        // Chestplate
-        const chestGeo = new THREE.CylinderGeometry(0.42, 0.40, 0.5, 8);
-        const armorMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
-        this.chestPlate = new THREE.Mesh(chestGeo, armorMat);
-        this.chestPlate.position.y = 0.2;
-        this.armorGroup.add(this.chestPlate);
-
-        // Helmet
-        const helmGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        this.helmet = new THREE.Mesh(helmGeo, armorMat.clone());
-        this.helmet.position.y = 0.7;
-        this.armorGroup.add(this.helmet);
-
-        // Assign bodyMesh to skinMesh for general purpose (flashing/physics)
-        this.bodyMesh = this.skinMesh;
+        this.bodyMesh = this.skinMesh; // For flashes
 
         // Weapon (Parent to body/arm) - Hand Group
         this.handGroup = new THREE.Group();
         this.handGroup.position.set(0.4, 0.2, 0.3); // Hand position roughly
-        // this.handGroup.rotation.x = Math.PI / 4;
         this.skinMesh.add(this.handGroup);
 
         // Initial visual
         this.updateWeaponVisuals();
-
-        // Direction indicator (Eyes)
-        const eyeGeo = new THREE.BoxGeometry(0.3, 0.1, 0.2);
-        const eyeMesh = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-        eyeMesh.position.set(0, 0.6, 0.3); // Relative to skin
-        this.skinMesh.add(eyeMesh);
     }
 
     setPosition(x, y, z) {
         this.position.set(x, y, z);
         this.mesh.position.copy(this.position);
+    }
+
+    flashColor(colorHex, duration = 0.1) {
+        if (!this.model) return;
+
+        // If already flashing, just update the color but don't re-save oldColors
+        const isNewFlash = !this._flashing;
+        this._flashing = true;
+
+        // Clear any pending reset
+        if (this._flashTimeout) {
+            clearTimeout(this._flashTimeout);
+        }
+
+        this.model.traverse((child) => {
+            if (child.isMesh && child.material) {
+                // Store original color only on first flash
+                if (isNewFlash && !child._originalColor) {
+                    child._originalColor = child.material.color.getHex();
+                }
+                child.material.color.setHex(colorHex);
+            }
+        });
+
+        // Reset after duration
+        this._flashTimeout = setTimeout(() => {
+            this._flashing = false;
+            this.model.traverse((child) => {
+                if (child.isMesh && child.material && child._originalColor !== undefined) {
+                    child.material.color.setHex(child._originalColor);
+                }
+            });
+        }, duration * 1000);
+    }
+
+    toggleTransparency(enabled, opacity) {
+        if (!this.model) return;
+        this.model.traverse(child => {
+            if (child.isMesh && child.material) {
+                child.material.transparent = enabled;
+                child.material.opacity = opacity;
+            }
+        });
     }
 
     switchWeapon(dir) {
@@ -263,12 +369,11 @@ export class Player {
             this.invincibleTimer -= dt;
             if (this.invincibleTimer <= 0) {
                 this.isInvincible = false;
-                this.bodyMesh.material.opacity = 1.0;
-                this.bodyMesh.material.transparent = false;
+                this.toggleTransparency(false, 1.0);
             } else {
                 // Blink effect
-                this.bodyMesh.material.transparent = true;
-                this.bodyMesh.material.opacity = Math.sin(this.invincibleTimer * 20) > 0 ? 0.5 : 1.0;
+                const opacity = Math.sin(this.invincibleTimer * 20) > 0 ? 0.5 : 1.0;
+                this.toggleTransparency(true, opacity);
             }
         }
     }
@@ -351,24 +456,42 @@ export class Player {
         // Disable input processing via state
         this.fsm.changeState('DEATH');
 
-        // Show Game Over UI
-        const ui = document.getElementById('game-over-screen');
-        if (ui) ui.classList.remove('hidden');
+        // Play death music/sound
+        if (this.game && this.game.audio) {
+            this.game.audio.playSound('death');
+        }
 
-        // Listen for restart
-        const restartHandler = (e) => {
-            if (e.key === 'r' || e.key === 'R' || e.type === 'touchstart') {
-                window.removeEventListener('keydown', restartHandler);
-                window.removeEventListener('touchstart', restartHandler);
-                location.reload();
-            }
-        };
-
-        // Delayed listener to prevent accidental restart
+        // Wait 2 seconds before showing game over UI (let death animation play)
         setTimeout(() => {
-            window.addEventListener('keydown', restartHandler);
-            window.addEventListener('touchstart', restartHandler);
-        }, 1000);
+            // Show Game Over UI with fade-in
+            const ui = document.getElementById('game-over-screen');
+            if (ui) {
+                ui.classList.remove('hidden');
+                ui.style.opacity = '0';
+                ui.style.transition = 'opacity 0.5s ease-in';
+                // Trigger reflow then fade in
+                requestAnimationFrame(() => {
+                    ui.style.opacity = '1';
+                });
+            }
+
+            // Listen for restart (delayed another second to prevent accidental restart)
+            setTimeout(() => {
+                const restartHandler = (e) => {
+                    if (e.key === 'r' || e.key === 'R' || e.type === 'touchstart') {
+                        window.removeEventListener('keydown', restartHandler);
+                        window.removeEventListener('touchstart', restartHandler);
+                        if (this.game && this.game.restartGame) {
+                            this.game.restartGame();
+                        } else {
+                            location.reload(); // Fallback
+                        }
+                    }
+                };
+                window.addEventListener('keydown', restartHandler);
+                window.addEventListener('touchstart', restartHandler);
+            }, 1000);
+        }, 2000);
     }
 }
 
@@ -376,13 +499,18 @@ export class Player {
 class DeathState extends State {
     enter() {
         this.owner.velocity.set(0, 0, 0);
-        if (this.owner.bodyMesh) {
-            this.owner.bodyMesh.rotation.x = -Math.PI / 2; // Fall over
-            this.owner.bodyMesh.position.y = 0.2;
+
+        // Play death animation (non-looping)
+        this.owner.playAnim('death');
+
+        // Make animation play only once (not loop)
+        if (this.owner.currentAction) {
+            this.owner.currentAction.setLoop(THREE.LoopOnce);
+            this.owner.currentAction.clampWhenFinished = true;
         }
     }
     update(dt) {
-        // Nothing, dead
+        // Nothing, dead - animation handles visual
     }
 }
 
@@ -393,7 +521,7 @@ class DeathState extends State {
 class IdleState extends State {
     enter() {
         this.owner.velocity.x = 0;
-        // console.log("Enter IDLE");
+        this.owner.playAnim('idle');
     }
 
     update(dt) {
@@ -427,6 +555,10 @@ class IdleState extends State {
 }
 
 class RunState extends State {
+    enter() {
+        this.owner.playAnim('run');
+    }
+
     update(dt) {
         const hInput = this.owner.input.getHorizontalAxis();
 
@@ -471,6 +603,7 @@ class JumpRiseState extends State {
     enter() {
         this.owner.velocity.y = GameConfig.player.jumpVelocity;
         this.owner.isGrounded = false;
+        this.owner.playAnim('jump');
         if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('jump');
     }
 
@@ -547,15 +680,16 @@ class AttackThrowState extends State {
         this.timer = 0;
         this.animPhase = 'anticipation';
 
+        // Play attack animation
+        this.owner.playAnim('attack');
+
         // Stop movement if on ground (commit to attack)
         if (this.owner.isGrounded) {
             this.owner.velocity.x = 0;
         }
 
-        // console.log("THROW ATTACK START");
-
         // Visual cue (flash white)
-        this.owner.bodyMesh.material.color.setHex(0xffffff);
+        this.owner.flashColor(0xffffff, 0.1);
 
         // Spawn actual projectile
         this.spawnProjectile();
@@ -569,13 +703,13 @@ class AttackThrowState extends State {
         // Anticipation -> Active
         if (this.animPhase === 'anticipation' && this.timer >= GameConfig.attacks.throw.anticipation) {
             this.animPhase = 'active';
-            this.owner.bodyMesh.material.color.setHex(0xffff00); // Yellow flash
+            this.owner.flashColor(0xffff00, 0.1);
         }
 
         // Active -> Recovery
         if (this.animPhase === 'active' && this.timer >= (GameConfig.attacks.throw.anticipation + GameConfig.attacks.throw.active)) {
             this.animPhase = 'recovery';
-            this.owner.bodyMesh.material.color.setHex(0xaa2222); // Back to red
+            // No color change needed for recovery, just finish
         }
 
         // End
@@ -622,6 +756,9 @@ class AttackHeavyState extends State {
         this.phase = 'anticipation';
         this.hitEnemies.clear();
 
+        // Play attack animation
+        this.owner.playAnim('attack');
+
         // Stop movement
         if (this.owner.isGrounded) {
             this.owner.velocity.x = 0;
@@ -635,7 +772,7 @@ class AttackHeavyState extends State {
         }
 
         // Flash cues
-        this.owner.bodyMesh.material.color.setHex(0xffaa00); // Orange charging
+        this.owner.flashColor(0xffaa00, 0.1); // Orange charging
     }
 
     update(dt) {
@@ -649,7 +786,7 @@ class AttackHeavyState extends State {
             // TRANSITION TO ACTIVE
             if (this.phase !== 'active') {
                 this.phase = 'active';
-                this.owner.bodyMesh.material.color.setHex(0xff0000); // Red hot swing
+                this.owner.flashColor(0xff0000, 0.15); // Red hot swing
 
                 // Swing visuals
                 if (this.owner.weaponMesh) {
@@ -663,7 +800,7 @@ class AttackHeavyState extends State {
             // TRANSITION TO RECOVERY
             if (this.phase !== 'recovery') {
                 this.phase = 'recovery';
-                this.owner.bodyMesh.material.color.setHex(0xaa4444); // Cooling down
+                this.owner.flashColor(0xaa4444, 0.1); // Cooling down
 
                 // Return visuals
                 if (this.owner.weaponMesh) {
@@ -747,17 +884,7 @@ class AttackHeavyState extends State {
     }
 
     exit() {
-        // Reset color (should probably restore original color, but red is default for now)
-        if (this.owner.bodyMesh) {
-            // Restore default colors based on armor/skin not hardcoded?
-            // For now, let's just assume the default red helper color or nothing
-            // Actually, Player.init sets specific colors. We should probably just clear the emissive "flash" effect or reset.
-            // But since we don't store original state easily, let's re-apply the known default or rely on the flash logic which uses setTimeout.
-            // The logic above used setHex directly.
-            // Let's assume the flash logic in enter() overwrote it.
-            // We'll leave the color reset for now as it matches existing code style, though imprecise.
-            this.owner.bodyMesh.material.color.setHex(0xaa2222);
-        }
+        // Color is auto-reset by flashColor's timeout, no manual reset needed
 
         // Reset weapon rotation
         if (this.owner.weaponMesh) {

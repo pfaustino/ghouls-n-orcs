@@ -134,6 +134,13 @@ export const WeaponFactory = {
             group.add(light);
         }
 
+        else if (type === 'gargoyle') {
+            const geo = new THREE.SphereGeometry(0.5, 8, 8);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            const mesh = new THREE.Mesh(geo, mat);
+            group.add(mesh);
+        }
+
         return group;
     }
 };

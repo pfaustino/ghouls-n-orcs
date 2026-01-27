@@ -11,11 +11,50 @@
  */
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { clone } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/SkeletonUtils.js';
 import { Enemy } from './Enemy.js';
 import { State } from '../core/StateMachine.js';
 
 export class Orc extends Enemy {
     createMesh() {
+        if (this.game.assets && this.game.assets.models['orc']) {
+            const gltf = this.game.assets.models['orc'];
+            this.model = clone(gltf.scene);
+
+            this.mesh.add(this.model);
+
+            // Transform (like Ghoul.js - no internal scale fix)
+            this.model.rotation.y = Math.PI / 2; // Face left (toward player)
+            this.model.scale.setScalar(1.5);
+            this.model.position.y = 0;
+
+            // Shadows
+            this.model.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.bodyMesh = this.model;
+
+            // Animations
+            this.mixer = new THREE.AnimationMixer(this.model);
+            gltf.animations.forEach(clip => {
+                let name = clip.name;
+                // Format is "EnemyArmature|...|ActionName", take the LAST part
+                if (name.includes('|')) {
+                    const parts = name.split('|');
+                    name = parts[parts.length - 1];
+                }
+                this.animations[name.toLowerCase()] = clip;
+            });
+
+        } else {
+            this.createProceduralMesh();
+        }
+    }
+
+    createProceduralMesh() {
         // Big hulking body
         const group = new THREE.Group();
 
@@ -38,7 +77,7 @@ export class Orc extends Enemy {
         const shieldGeo = new THREE.BoxGeometry(0.2, 1.2, 1.0);
         const shieldMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8 });
         this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-        this.shieldMesh.position.set(0.7, 0.8, 0.5); // "Left" side relative to facing? adjusted in logic
+        this.shieldMesh.position.set(0.7, 0.8, 0.5);
         group.add(this.shieldMesh);
 
         // Weapon (Right box)
@@ -51,6 +90,18 @@ export class Orc extends Enemy {
 
         this.bodyMesh = group; // Assign to parent class prop for flash effects
         this.mesh.add(group);
+    }
+
+    playAnim(name) {
+        if (!this.mixer) return;
+        const clip = this.animations[name] || this.animations['idle']; // Fallback
+        if (clip) {
+            const action = this.mixer.clipAction(clip);
+            if (!action.isRunning()) {
+                this.mixer.stopAllAction();
+                action.reset().play();
+            }
+        }
     }
 
     constructor(scene, config, x, y, game) {
@@ -67,7 +118,6 @@ export class Orc extends Enemy {
 
     takeDamage(amount, sourcePos) {
         // Direction check for shield
-        // If blocking (APPROACH state) and hit from front
         const vectorToSource = sourcePos ? sourcePos.x - this.position.x : 0;
         const hitFromFront = (this.facingRight && vectorToSource > 0) || (!this.facingRight && vectorToSource < 0);
 
@@ -91,6 +141,7 @@ export class Orc extends Enemy {
 class OrcIdleState extends State {
     enter() {
         this.owner.velocity.x = 0;
+        this.owner.playAnim('idle');
     }
     update(dt) {
         if (this.owner.game.player) {
@@ -103,6 +154,9 @@ class OrcIdleState extends State {
 }
 
 class OrcApproachState extends State {
+    enter() {
+        this.owner.playAnim('run'); // or walk
+    }
     update(dt) {
         const player = this.owner.game.player;
         if (!player) return;
@@ -113,10 +167,6 @@ class OrcApproachState extends State {
         // Face player
         this.owner.facingRight = dx > 0;
         this.owner.mesh.rotation.y = this.owner.facingRight ? 0 : Math.PI;
-
-        // Visual Shield Up
-        this.owner.shieldMesh.position.set(0.6, 1.0, 0.3);
-        this.owner.shieldMesh.rotation.z = 0;
 
         // Move
         let dir = Math.sign(dx);
@@ -153,12 +203,15 @@ class OrcAttackState extends State {
         this.timer = 0;
         this.hasHit = false;
 
-        // Windup visual
-        this.owner.weaponMesh.rotation.x = -Math.PI / 2; // Back
-        if (this.owner.bodyMesh) this.owner.bodyMesh.position.y = 1.0;
+        // Play Attack Animation
+        // Assuming animation 'attack' exists, usually encompasses windup+hit+recovery
+        this.owner.playAnim('attack');
+
+        // Alternatively, if split clips:
+        // this.owner.playAnim('slash');
 
         // Color flash
-        if (this.owner.bodyPart) this.owner.bodyPart.material.color.setHex(0xffaa00);
+        // if (this.owner.bodyPart) this.owner.bodyPart.material.color.setHex(0xffaa00);
     }
 
     update(dt) {
@@ -171,13 +224,11 @@ class OrcAttackState extends State {
                 // Check hitbox once
                 this.checkHit();
                 this.hasHit = true;
-
-                // Swing visual
-                this.owner.weaponMesh.rotation.x = Math.PI / 2; // Forward
             }
         }
 
         // End
+        // We could also check `this.owner.mixer.clipAction(clip).isRunning()`
         if (this.timer >= config.telegraphDuration + config.attackDuration + config.recoveryDuration) {
             this.machine.changeState('APPROACH');
         }
@@ -191,11 +242,8 @@ class OrcAttackState extends State {
             const range = this.owner.config.attackRange + 0.5;
             const dir = this.owner.facingRight ? 1 : -1;
 
-            // Box check would be better, but distance is okay for prototype
             const dx = player.position.x - startX;
             if (Math.abs(dx) < range && Math.sign(dx) === dir) {
-                // Hit check collision plane
-                // Also check Y diff?
                 if (Math.abs(player.position.y - this.owner.position.y) < 2) {
                     player.takeDamage(this.owner.config.damage);
                 }
@@ -204,10 +252,7 @@ class OrcAttackState extends State {
     }
 
     exit() {
-        if (this.owner.bodyMesh) this.owner.bodyMesh.position.y = 0; // Reset
-        this.owner.weaponMesh.rotation.x = Math.PI / 4; // Reset
-
-        if (this.owner.bodyPart) this.owner.bodyPart.material.color.setHex(0x553311); // Reset
+        // Cleanup visuals if needed
     }
 }
 
@@ -218,9 +263,7 @@ class OrcPatrolState extends State {
         this.owner.facingRight = this.dir > 0;
         this.owner.mesh.rotation.y = this.owner.facingRight ? 0 : Math.PI;
 
-        // Lower shield while walking away
-        this.owner.shieldMesh.position.set(0.7, 0.8, 0.5);
-        this.owner.shieldMesh.rotation.z = 0.5;
+        this.owner.playAnim('walk');
     }
 
     update(dt) {

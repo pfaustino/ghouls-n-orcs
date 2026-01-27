@@ -32,7 +32,18 @@ export class Enemy {
         this.mesh.position.copy(this.position);
         this.scene.add(this.mesh);
 
+        // Animations
+        this.mixer = null;
+        this.animations = {};
+
         this.createMesh();
+    }
+
+    update(dt) {
+        if (!this.isActive) return;
+        if (this.mixer) {
+            this.mixer.update(dt);
+        }
     }
 
     createMesh() {

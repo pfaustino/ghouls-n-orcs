@@ -9,11 +9,65 @@
  */
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { clone } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/SkeletonUtils.js';
 import { Enemy } from './Enemy.js';
 import { State } from '../core/StateMachine.js';
 
 export class Ghoul extends Enemy {
     createMesh() {
+        if (this.game.assets && this.game.assets.models['ghoul']) {
+            const gltf = this.game.assets.models['ghoul'];
+            this.model = clone(gltf.scene);
+
+            this.mesh.add(this.model);
+
+            // Adjust transform
+            this.model.rotation.y = -Math.PI / 2; // Face Left by default
+            this.model.scale.setScalar(1.5);
+            this.model.position.y = 0;
+
+            // Shadows
+            this.model.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            this.bodyMesh = this.model;
+
+            // Animations
+            this.mixer = new THREE.AnimationMixer(this.model);
+            gltf.animations.forEach(clip => {
+                let name = clip.name;
+                // Format is "EnemyArmature|...|ActionName", take the LAST part
+                if (name.includes('|')) {
+                    const parts = name.split('|');
+                    name = parts[parts.length - 1];
+                }
+                this.animations[name.toLowerCase()] = clip;
+                console.log(`🧟 Anim: ${name.toLowerCase()}`);
+            });
+
+        } else {
+            // Fallback to Procedural logic if asset missing
+            this.createProceduralMesh();
+        }
+    }
+
+    playAnim(name) {
+        if (!this.mixer) return;
+        const clip = this.animations[name] || this.animations['idle'] || this.animations['run'];
+        if (clip) {
+            const action = this.mixer.clipAction(clip);
+            if (!action.isRunning()) {
+                this.mixer.stopAllAction();
+                action.reset().play();
+            }
+        }
+    }
+
+    createProceduralMesh() {
         const group = new THREE.Group();
         const matSkin = new THREE.MeshStandardMaterial({ color: 0x558855, roughness: 0.9, flatShading: true });
         const matClothes = new THREE.MeshStandardMaterial({ color: 0x443355, roughness: 1.0 });
@@ -87,6 +141,7 @@ class GhoulIdleState extends State {
     enter() {
         this.owner.velocity.x = 0;
         this.timer = 0;
+        this.owner.playAnim('idle');
     }
 
     update(dt) {
@@ -114,6 +169,13 @@ class GhoulPatrolState extends State {
         // Pick a random direction if not set
         if (!this.direction) this.direction = Math.random() > 0.5 ? 1 : -1;
         this.owner.facingRight = this.direction > 0;
+
+        // Face correct way
+        if (this.owner.model) {
+            this.owner.model.rotation.y = this.owner.facingRight ? Math.PI / 2 : -Math.PI / 2;
+        }
+
+        this.owner.playAnim('walk'); // or Run
     }
 
     update(dt) {
@@ -166,7 +228,12 @@ class GhoulPatrolState extends State {
     flip() {
         this.direction *= -1;
         this.owner.facingRight = this.direction > 0;
-        this.owner.mesh.rotation.y = this.owner.facingRight ? 0 : Math.PI;
+        // this.owner.mesh.rotation.y = this.owner.facingRight ? 0 : Math.PI; // Old logic
+
+        // New Logic for GLB orientation (Right = +X)
+        if (this.owner.model) {
+            this.owner.model.rotation.y = this.owner.facingRight ? Math.PI / 2 : -Math.PI / 2;
+        }
 
         // Push slightly away from wall/edge to prevent sticking
         this.owner.velocity.x = 0;
@@ -175,6 +242,10 @@ class GhoulPatrolState extends State {
 }
 
 class GhoulPursueState extends State {
+    enter() {
+        this.owner.playAnim('run');
+    }
+
     update(dt) {
         const player = this.owner.game.player;
         if (!player) return;
@@ -186,8 +257,11 @@ class GhoulPursueState extends State {
         // Stop if too close (Attack range logic later)
         if (dist < 0.8) {
             this.owner.velocity.x = 0;
-            // Attack logic would go here
+            this.owner.playAnim('attack'); // Attack anim
             return;
+        } else {
+            // Ensure running if coming from attack
+            this.owner.playAnim('run');
         }
 
         // Ledge Check before moving
@@ -196,7 +270,6 @@ class GhoulPursueState extends State {
         const myY = this.owner.position.y;
 
         if (!platform || (myY - platform.box.max.y) > 2.0) {
-            // Cannot reach player, stop at edge
             this.owner.velocity.x = 0;
             // Maybe go back to idle/patrol if stuck?
         } else {
@@ -206,7 +279,9 @@ class GhoulPursueState extends State {
             // Update facing
             if (dir !== 0) {
                 this.owner.facingRight = dir > 0;
-                this.owner.mesh.rotation.y = this.owner.facingRight ? 0 : Math.PI;
+                if (this.owner.model) {
+                    this.owner.model.rotation.y = this.owner.facingRight ? Math.PI / 2 : -Math.PI / 2;
+                }
             }
         }
     }
