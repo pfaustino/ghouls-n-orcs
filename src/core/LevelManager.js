@@ -344,11 +344,12 @@ export class LevelManager {
         if (overlay && text) {
             text.textContent = name;
             overlay.classList.remove('hidden');
+            overlay.classList.remove('minimized'); // Reset to center
 
             if (this.titleTimeout) clearTimeout(this.titleTimeout);
 
             this.titleTimeout = setTimeout(() => {
-                overlay.classList.add('hidden');
+                overlay.classList.add('minimized');
             }, 3000);
         }
     }

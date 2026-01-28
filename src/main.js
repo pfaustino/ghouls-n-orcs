@@ -21,7 +21,7 @@ import { Player } from './entities/Player.js';
 import { GameConfig } from './config/GameConfig.js';
 import { Ghoul } from './entities/Ghoul.js';
 
-export const VERSION = '0.9.8.1';
+export const VERSION = '0.9.9.1';
 
 /**
  * Main Game Class

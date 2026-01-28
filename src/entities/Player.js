@@ -60,6 +60,18 @@ export class Player {
         // Set initial state
         this.updateWeaponUI();
         this.fsm.changeState('IDLE');
+
+        // Allow tapping weapon to switch
+        const weaponUI = document.getElementById('weapon-display');
+        if (weaponUI) {
+            weaponUI.style.cursor = 'pointer';
+            weaponUI.style.pointerEvents = 'auto'; // Ensure it captures clicks
+            weaponUI.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // prevent game thinking it's an attack
+                this.switchWeapon(1);
+            };
+        }
     }
 
     loadCharacterModel() {

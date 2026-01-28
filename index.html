@@ -195,11 +195,26 @@
             pointer-events: none;
             z-index: 1500;
             opacity: 1;
-            transition: opacity 1.5s ease;
+            transition: all 2.0s cubic-bezier(0.25, 1, 0.5, 1);
+            /* Keep centered initially */
+            transform-origin: 20px 50%;
+            /* Anchor left-ish so it pulls left when scaled */
         }
 
         #level-title-overlay.hidden {
             opacity: 0;
+        }
+
+        #level-title-overlay.minimized {
+            top: -20px;
+            /* Move up */
+            transform: scale(0.3);
+            /* Shrink */
+            opacity: 0.7;
+            /* Fade slightly but remain visible */
+            transform-origin: 0 50%;
+            /* Pull towards left edge */
+            /* Since text is centered, scaling around 0 50% brings the center (50%) to 15% (0.3*50) */
         }
 
         .level-title {
