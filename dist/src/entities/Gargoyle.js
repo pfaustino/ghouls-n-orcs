@@ -69,30 +69,14 @@ export class Gargoyle extends Enemy {
 
     // Override physics to handle Flying (No Gravity)
     fixedUpdate(dt) {
-        if (this.isDying) {
-            // Fall to ground
-            this.velocity.y -= GameConfig.world.gravity * dt;
-            this.position.y += this.velocity.y * dt;
+        if (!this.isActive) return;
 
-            // Ground Collision
-            if (this.game.levelManager) {
-                this.game.levelManager.checkGroundCollision(this);
-            } else if (this.position.y <= 0) {
-                this.position.y = 0;
-                this.velocity.y = 0;
-            }
-
-            this.mesh.position.copy(this.position);
-
-            // Rotate to lie down (Simulate death animation)
-            if (this.bodyMesh) {
-                this.bodyMesh.rotation.x = -Math.PI / 2; // Flat on back/front
-                this.bodyMesh.position.y = 0.4; // Offset to not sink in ground if origin is center
-            }
+        // Apply Gravity ONLY if dead or stunned (not implemented yet)
+        if (this.fsm.currentStateName === 'DEATH') {
+            // Standard gravity fall
+            super.fixedUpdate(dt);
             return;
         }
-
-        if (!this.isActive) return;
 
         // Custom Physics for Flying
         // No Gravity applied here

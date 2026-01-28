@@ -144,7 +144,7 @@ export const Levels = {
     crypt: {
         id: 'crypt',
         name: 'The Haunted Crypt',
-        length: 500,
+        length: 250,
         hasBoss: true,
         platforms: [
             // =========================================
@@ -202,51 +202,13 @@ export const Levels = {
             { x: 172, y: -5.5, w: 6, h: 1, d: 5, type: 'platform' }, // Added to close gap
 
             // =========================================
-            // SECTION 3: THE SPIKE PIT (x: 180 - 260)
-            // Low platforms, strict jumps
+            // SECTION 3: BOSS GATE (x: 180+)
             // =========================================
-            { x: 182, y: -5, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 190, y: -5, w: 6, h: 1, d: 5, type: 'platform' }, // Gap 2
-            { x: 198, y: -4, w: 6, h: 1, d: 5, type: 'platform' }, // Step up 1
-            { x: 206, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 214, y: -5, w: 6, h: 1, d: 5, type: 'platform' }, // Step down 1
-            { x: 222, y: -5, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 230, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 238, y: -3, w: 6, h: 1, d: 5, type: 'platform' }, // Step up
-            { x: 246, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 254, y: -2, w: 6, h: 1, d: 5, type: 'platform' }, // Start ascent
+            { x: 180, y: -5, w: 10, h: 1, d: 5, type: 'platform' }, // Steps up
+            { x: 190, y: -4, w: 16, h: 1, d: 5, type: 'platform' },
 
-            // =========================================
-            // SECTION 4: THE CRUMBLING STAIRCASE (x: 260 - 340)
-            // High verticality
-            // =========================================
-            { x: 262, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 270, y: -1, w: 6, h: 1, d: 5, type: 'platform' }, // Gap 2, Up 1
-            { x: 278, y: 0, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 286, y: 1, w: 6, h: 1, d: 5, type: 'platform' },  // Peak
-            { x: 294, y: 0, w: 6, h: 1, d: 5, type: 'platform' },  // Descent
-            { x: 302, y: -1, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 310, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 318, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 326, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
-            { x: 334, y: -5, w: 8, h: 1, d: 5, type: 'platform' }, // Bottom
-
-            // =========================================
-            // SECTION 5: THE BONE BRIDGE (x: 340 - 420)
-            // Long segments
-            // =========================================
-            { x: 348, y: -5, w: 16, h: 2, d: 10, type: 'ground' }, // Base
-            { x: 362, y: -5, w: 6, h: 1, d: 5, type: 'platform' }, // Connection
-            { x: 374, y: -4, w: 10, h: 1, d: 5, type: 'platform' }, // Raised
-            { x: 388, y: -4, w: 10, h: 1, d: 5, type: 'platform' },
-            { x: 402, y: -5, w: 18, h: 1, d: 5, type: 'platform' }, // Drop
-
-            // =========================================
-            // BOSS GATE (x: 420+)
-            // =========================================
-            { x: 420, y: -4, w: 10, h: 1, d: 5, type: 'platform' },
-            { x: 435, y: -3, w: 16, h: 1, d: 5, type: 'platform' },
-            { x: 460, y: -3, w: 40, h: 2, d: 10, type: 'ground' } // Boss Arena
+            // Arena (Flat)
+            { x: 220, y: -4, w: 40, h: 2, d: 10, type: 'ground' } // Surface -3
         ],
         spawners: [
             // Descent
@@ -266,37 +228,19 @@ export const Levels = {
             { x: 155, type: 'orcGrunt', triggerDist: 15 },
             { x: 160, type: 'ghoulShambling', triggerDist: 10 },
 
-            // Spike Pit (New)
-            { x: 190, type: 'ghoulCrawler', triggerDist: 12 }, // Low profile enemy
-            { x: 206, type: 'gargoyle', triggerDist: 15 },     // Air harassment
-            { x: 222, type: 'ghoulShambling', triggerDist: 12 },
-            { x: 246, type: 'orcGrunt', triggerDist: 15 },     // Blocking path
-
-            // Staircase (New)
-            { x: 270, type: 'gargoyle', triggerDist: 18 },     // High altitude
-            { x: 286, type: 'orcBerserker', triggerDist: 15 }, // King of the hill
-            { x: 302, type: 'ghoulCrawler', triggerDist: 12 }, // Descent ambush
-            { x: 318, type: 'ghoulShambling', triggerDist: 12 },
-
-            // Bone Bridge (New)
-            { x: 348, type: 'orcGrunt', triggerDist: 15 },
-            { x: 374, type: 'orcBerserker', triggerDist: 20 },
-            { x: 402, type: 'ghoulCrawler', triggerDist: 12 },
-
             // Boss
-            { x: 465, type: 'orcWarlord', triggerDist: 25 },
+            // Boss
+            { x: 225, type: 'orcWarlord', triggerDist: 25 },
 
-            // Gargoyles (Global)
+            // Gargoyles (Flying Harassment)
             { x: 35, type: 'gargoyle', triggerDist: 15 },  // Descent
             { x: 60, type: 'gargoyle', triggerDist: 15 },  // Pillars
-            { x: 70, type: 'gargoyle', triggerDist: 15 },  // Pillars
+            { x: 70, type: 'gargoyle', triggerDist: 15 },
             { x: 80, type: 'gargoyle', triggerDist: 15 },
             { x: 105, type: 'gargoyle', triggerDist: 18 }, // Abyss Start
             { x: 120, type: 'gargoyle', triggerDist: 18 }, // Abyss Mid
             { x: 135, type: 'gargoyle', triggerDist: 18 }, // Abyss High
-            { x: 165, type: 'gargoyle', triggerDist: 15 }, // Boss Gate (Old)
-            { x: 200, type: 'gargoyle', triggerDist: 15 }, // New Section
-            { x: 350, type: 'gargoyle', triggerDist: 15 }  // New Section
+            { x: 165, type: 'gargoyle', triggerDist: 15 }  // Boss Gate
         ]
     }
 };

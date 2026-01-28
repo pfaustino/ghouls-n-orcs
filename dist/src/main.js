@@ -287,23 +287,6 @@ class Game {
             console.log(this.isPaused ? '⏸️ Game Paused' : '▶️ Game Resumed');
         });
 
-        // Select Level toggle (Gamepad Select button)
-        this.inputManager.on('selectLevel', (e) => {
-            // Only toggle on press, not release
-            if (e.type !== 'pressed') return;
-            if (!this.levelManager || !this.levelManager.currentLevel) return;
-
-            // Available levels in order
-            const levelOrder = ['graveyard', 'crypt'];
-            const currentId = this.levelManager.currentLevel.id;
-            const currentIndex = levelOrder.indexOf(currentId);
-            const nextIndex = (currentIndex + 1) % levelOrder.length;
-            const nextLevel = levelOrder[nextIndex];
-
-            console.log(`🎮 Select: Toggling to level ${nextLevel}`);
-            this.warpToLevel(nextLevel, 'start');
-        });
-
         // Debug Level Warps (Direct listeners for Shift/Ctrl combos)
         window.addEventListener('keydown', (e) => {
             if (!this.debugMode) return;
@@ -421,9 +404,10 @@ class Game {
             this.player.setPosition(0, 5, 0);
         });
 
-        // Reload current level
+        // Reload level
         if (this.levelManager) {
-            this.levelManager.restartLevel();
+            // this.levelManager.restartLevel(); // Old: Restart current
+            this.levelManager.loadLevel('graveyard'); // New: Restart entire game
         }
 
         console.log('✅ Game restarted');
