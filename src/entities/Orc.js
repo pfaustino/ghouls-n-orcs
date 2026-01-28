@@ -47,7 +47,18 @@ export class Orc extends Enemy {
                     const parts = name.split('|');
                     name = parts[parts.length - 1];
                 }
-                this.animations[name.toLowerCase()] = clip;
+                const lowerName = name.toLowerCase();
+                this.animations[lowerName] = clip;
+
+                // Map based on User Screenshot
+                if (name === 'Weapon') this.animations['attack'] = clip;
+                if (name === 'Punch') this.animations['punch'] = clip;
+
+                if (lowerName.includes('hitreact')) this.animations['hit'] = clip;
+                if (name === 'Walk') this.animations['walk'] = clip;
+                if (name === 'Run') this.animations['run'] = clip;
+                if (name === 'Idle') this.animations['idle'] = clip;
+                if (name === 'Death') this.animations['death'] = clip;
             });
 
         } else {
@@ -156,11 +167,14 @@ class OrcIdleState extends State {
 
 class OrcApproachState extends State {
     enter() {
-        this.owner.playAnim('run'); // or walk
+        this.owner.playAnim('walk'); // User requested walk
     }
     update(dt) {
         const player = this.owner.game.player;
-        if (!player) return;
+        if (!player || player.isDead) {
+            this.machine.changeState('IDLE');
+            return;
+        }
 
         const dx = player.position.x - this.owner.position.x;
         const dist = Math.abs(dx);
@@ -171,19 +185,26 @@ class OrcApproachState extends State {
 
         // Move
         let dir = Math.sign(dx);
+        const wasStuck = Math.abs(this.owner.velocity.x) < 0.1;
 
         // Smart Ledge Detection
         const lookAheadX = this.owner.position.x + (dir * 2.5); // Look further ahead for big Orc
         const platform = this.owner.game.levelManager.findGroundAt(lookAheadX);
         const yDiff = platform ? (this.owner.position.y - platform.box.max.y) : 999;
 
-        if (!platform || yDiff > 3.0) {
+        if (!platform || yDiff > 6.0) {
             // Force Patrol state away from ledge
             this.machine.changeState('PATROL', { dir: -dir, duration: 3.0 });
             return;
         }
 
         this.owner.velocity.x = dir * this.owner.config.speed;
+
+        // Jump Check
+        if (this.owner.isGrounded && wasStuck && (player.position.y > this.owner.position.y + 0.5) && dir !== 0) {
+            this.owner.velocity.y = 12; // Jump up
+            this.owner.isGrounded = false;
+        }
 
         // Attack range
         if (dist < this.owner.config.attackRange) {
@@ -207,6 +228,9 @@ class OrcAttackState extends State {
         // Play Attack Animation
         // Assuming animation 'attack' exists, usually encompasses windup+hit+recovery
         this.owner.playAnim('attack');
+
+        // Sound
+        if (this.owner.game.audio) this.owner.game.audio.playSound('punch');
 
         // Alternatively, if split clips:
         // this.owner.playAnim('slash');

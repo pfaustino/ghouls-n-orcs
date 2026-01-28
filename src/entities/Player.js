@@ -9,12 +9,17 @@
  */
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
 import { clone } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/SkeletonUtils.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { StateMachine, State } from '../core/StateMachine.js';
 import { WeaponFactory } from './WeaponFactory.js';
 
 export class Player {
+    get isDead() {
+        return this.health <= 0 || this.currentState === 'DEATH';
+    }
+
     constructor(scene, input, game) {
         this.scene = scene;
         this.input = input;
@@ -313,8 +318,8 @@ export class Player {
         this.fsm.addState('JUMP_FALL', new JumpFallState(this.fsm));
         this.fsm.addState('ATTACK_THROW', new AttackThrowState(this.fsm));
         this.fsm.addState('ATTACK_HEAVY', new AttackHeavyState(this.fsm));
-        this.fsm.addState('EMOTE', new EmoteState(this.fsm));
-        this.fsm.addState('EMOTE', new EmoteState(this.fsm));
+        this.fsm.addState('ATTACK_HEAVY', new AttackHeavyState(this.fsm));
+        this.fsm.addState('ROLL', new RollState(this.fsm));
         this.fsm.addState('DEATH', new DeathState(this.fsm));
     }
 
@@ -381,6 +386,18 @@ export class Player {
     }
 
     update(dt) {
+        // Check Restart Input (Death)
+        if (this.waitingForRestart) {
+            if (this.input.keys.get('KeyR') || this.input.isJustPressed('jump') || this.input.isJustPressed('attackPrimary')) {
+                this.waitingForRestart = false; // Prevent multiple calls
+                if (this.game && this.game.restartGame) {
+                    this.game.restartGame();
+                } else {
+                    location.reload();
+                }
+            }
+        }
+
         // Update State Machine
         this.fsm.update(dt);
 
@@ -482,6 +499,7 @@ export class Player {
     }
 
     die() {
+        if (this.currentState === 'DEATH') return; // Prevent double death
         console.log("💀 Player DIED");
 
         // Disable input processing via state
@@ -506,21 +524,9 @@ export class Player {
                 });
             }
 
-            // Listen for restart (delayed another second to prevent accidental restart)
+            // Enable restart (delayed slightly)
             setTimeout(() => {
-                const restartHandler = (e) => {
-                    if (e.key === 'r' || e.key === 'R' || e.type === 'touchstart') {
-                        window.removeEventListener('keydown', restartHandler);
-                        window.removeEventListener('touchstart', restartHandler);
-                        if (this.game && this.game.restartGame) {
-                            this.game.restartGame();
-                        } else {
-                            location.reload(); // Fallback
-                        }
-                    }
-                };
-                window.addEventListener('keydown', restartHandler);
-                window.addEventListener('touchstart', restartHandler);
+                this.waitingForRestart = true;
             }, 1000);
         }, 2000);
     }
@@ -599,9 +605,9 @@ class IdleState extends State {
             return;
         }
 
-        // EMOTE (L / Guard)
-        if (this.owner.input.isJustPressed('guard')) {
-            this.machine.changeState('EMOTE');
+        // ROLL (L)
+        if (this.owner.input.isJustPressed('roll')) {
+            this.machine.changeState('ROLL');
             return;
         }
 
@@ -626,6 +632,12 @@ class RunState extends State {
         this.owner.velocity.x = hInput * GameConfig.player.runSpeed;
 
         // Transitions
+
+        // ROLL
+        if (this.owner.input.isJustPressed('roll')) {
+            this.machine.changeState('ROLL');
+            return;
+        }
 
         // IDLE (Stopped)
         if (Math.abs(hInput) < 0.1) {
@@ -761,7 +773,7 @@ class AttackThrowState extends State {
         // Spawn actual projectile
         this.spawnProjectile();
 
-        if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('throw');
+        if (this.owner.game && this.owner.game.audio) this.owner.game.audio.playSound('spear_thrust');
     }
 
     update(dt) {
@@ -957,5 +969,41 @@ class AttackHeavyState extends State {
         if (this.owner.weaponMesh) {
             this.owner.weaponMesh.rotation.copy(this.startRotation);
         }
+    }
+}
+
+class RollState extends State {
+    enter() {
+        this.timer = 0;
+        this.owner.isInvincible = true;
+        this.owner.playAnim('jump'); // Fallback visual
+
+        // Boost Speed in facing direction
+        const dir = this.owner.facingRight ? 1 : -1;
+        this.owner.velocity.x = GameConfig.player.runSpeed * 1.8 * dir;
+        this.owner.velocity.y = 0;
+
+        // Flash blue for invincibility visual
+        this.owner.flashColor(0x00aaff, 0.4);
+
+        if (this.owner.game && this.owner.game.audio) {
+            // this.owner.game.audio.playSound('jump'); // Reuse jump sound
+        }
+    }
+
+    update(dt) {
+        this.timer += dt;
+
+        // Move
+        this.owner.position.x += this.owner.velocity.x * dt;
+
+        if (this.timer > 0.5) {
+            this.machine.changeState('IDLE');
+        }
+    }
+
+    exit() {
+        this.owner.isInvincible = false;
+        this.owner.velocity.x = 0; // Stop momentum on exit
     }
 }

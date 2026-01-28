@@ -3,7 +3,7 @@ export const Levels = {
     graveyard: {
         id: 'graveyard',
         name: 'Graveyard Outskirts',
-        length: 200,
+        length: 450,
         hasBoss: true,
         platforms: [
             // =========================================
@@ -58,6 +58,9 @@ export const Levels = {
             { x: 230, y: 1.8, w: 5, h: 1, d: 5, type: 'platform' }, // Bridge high gap
             { x: 236, y: 1.5, w: 5, h: 1, d: 5, type: 'platform' },
 
+            // Bridge Fix (x238 gap)
+            { x: 243, y: 1.5, w: 6, h: 1, d: 5, type: 'platform' },
+
             // Mid-bridge Safety
             { x: 250, y: 1.5, w: 15, h: 1, d: 5, type: 'platform' },
 
@@ -66,6 +69,7 @@ export const Levels = {
 
             // More Jumps
             { x: 265, y: 2.5, w: 5, h: 1, d: 5, type: 'platform' },
+            { x: 270, y: 1.8, w: 5, h: 1, d: 5, type: 'platform' }, // Added to fix 4.5 gap
             { x: 275, y: 1.0, w: 6, h: 1, d: 5, type: 'platform' },
 
             // Forest Entry Fix
@@ -79,6 +83,7 @@ export const Levels = {
 
             // Tree platforms (Simulated)
             { x: 305, y: 1.8, w: 8, h: 1, d: 5, type: 'platform' }, // Lowered from 2.5
+            { x: 315, y: 1.2, w: 8, h: 1, d: 5, type: 'platform' }, // Added to fix wide gap
             { x: 325, y: 2.5, w: 8, h: 1, d: 5, type: 'platform' }, // Adjusted progression
 
             { x: 335, y: -0.5, w: 40, h: 2, d: 10, type: 'ground' }, // Low ground path
@@ -87,7 +92,7 @@ export const Levels = {
             { x: 350, y: 0.2, w: 6, h: 1, d: 5, type: 'platform' },
 
             // Final Steps
-            { x: 360, y: 1.0, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 360, y: 1.0, w: 10, h: 1, d: 5, type: 'platform' },
             { x: 370, y: 2.0, w: 6, h: 1, d: 5, type: 'platform' },
 
             // =========================================
@@ -132,6 +137,110 @@ export const Levels = {
 
             // --- BOSS ---
             { x: 400, type: 'orcWarlord', triggerDist: 30 }
+        ],
+        nextLevel: 'crypt'
+    },
+
+    crypt: {
+        id: 'crypt',
+        name: 'The Haunted Crypt',
+        length: 250,
+        hasBoss: true,
+        platforms: [
+            // =========================================
+            // START: DESCENT (x: 0 - 50)
+            // =========================================
+            { x: -5, y: -1, w: 20, h: 2, d: 10, type: 'ground' }, // Entry (y=0 surface)
+
+            // Bridge Descent Gap (Fix 9 unit chasm)
+            { x: 9, y: -1.5, w: 10, h: 1, d: 5, type: 'platform' },
+
+            // Stairs down
+            { x: 18, y: -2, w: 8, h: 2, d: 10, type: 'ground' },   // y=-1
+            { x: 28, y: -3, w: 8, h: 2, d: 10, type: 'ground' },   // y=-2
+            { x: 38, y: -4, w: 8, h: 2, d: 10, type: 'ground' },   // y=-3
+            { x: 48, y: -5, w: 8, h: 2, d: 10, type: 'ground' },   // y=-4
+
+            // =========================================
+            // SECTION 1: HALL OF PILLARS (x: 50 - 120)
+            // =========================================
+            // Floor is low (-4 surface)
+            { x: 70, y: -5, w: 30, h: 2, d: 10, type: 'ground' },
+
+            // Pillar Platforms
+            { x: 60, y: -3, w: 4, h: 1, d: 5, type: 'platform' }, // Lowered to fix collision/jump
+            { x: 70, y: -3, w: 4, h: 1, d: 5, type: 'platform' },
+            { x: 80, y: -3, w: 4, h: 1, d: 5, type: 'platform' },
+
+            // Transition to Pit
+            { x: 92.5, y: -5, w: 15, h: 2, d: 10, type: 'ground' },
+
+            // =========================================
+            // SECTION 2: THE ABYSS (x: 100 - 180)
+            // Floating platforms over death drop
+            // =========================================
+
+            // Gap 1: From x95 (Edge 100). Target x106 (w6, edge 103). Gap 3.
+            { x: 105, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
+
+            // Gap 2: From 109 to 115 (w6, edge 112). Gap 3.
+            { x: 114, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
+
+            // Step Up: To 123, y-3. Height diff 1. Gap 2 (Safe).
+            { x: 123, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+
+            // To 131, y-2. Gap 2 (Safe).
+            { x: 131, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+
+            // Intermediate drop platform
+            { x: 140, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
+
+            // Long Drop down to Landing (Safe fall)
+            { x: 155, y: -6, w: 27.5, h: 2, d: 10, type: 'ground' }, // Surface -5
+
+            // Bridge Gap (x168)
+            { x: 172, y: -5.5, w: 6, h: 1, d: 5, type: 'platform' }, // Added to close gap
+
+            // =========================================
+            // SECTION 3: BOSS GATE (x: 180+)
+            // =========================================
+            { x: 180, y: -5, w: 10, h: 1, d: 5, type: 'platform' }, // Steps up
+            { x: 190, y: -4, w: 16, h: 1, d: 5, type: 'platform' },
+
+            // Arena (Flat)
+            { x: 220, y: -4, w: 40, h: 2, d: 10, type: 'ground' } // Surface -3
+        ],
+        spawners: [
+            // Descent
+            { x: 25, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 40, type: 'ghoulShambling', triggerDist: 12 },
+
+            // Pillars
+            { x: 60, type: 'ghoulCrawler', triggerDist: 15 }, // On pillar
+            { x: 70, type: 'orcGrunt', triggerDist: 15 }, // Patrol ground
+            { x: 80, type: 'ghoulCrawler', triggerDist: 15 }, // On pillar
+
+            // Abyss
+            { x: 115, type: 'ghoulShambling', triggerDist: 10 }, // On platform
+            { x: 131, type: 'orcBerserker', triggerDist: 12 }, // Ambush on high plat (moved to 131)
+
+            // Landing
+            { x: 155, type: 'orcGrunt', triggerDist: 15 },
+            { x: 160, type: 'ghoulShambling', triggerDist: 10 },
+
+            // Boss
+            // Boss
+            { x: 225, type: 'orcWarlord', triggerDist: 25 },
+
+            // Gargoyles (Flying Harassment)
+            { x: 35, type: 'gargoyle', triggerDist: 15 },  // Descent
+            { x: 60, type: 'gargoyle', triggerDist: 15 },  // Pillars
+            { x: 70, type: 'gargoyle', triggerDist: 15 },
+            { x: 80, type: 'gargoyle', triggerDist: 15 },
+            { x: 105, type: 'gargoyle', triggerDist: 18 }, // Abyss Start
+            { x: 120, type: 'gargoyle', triggerDist: 18 }, // Abyss Mid
+            { x: 135, type: 'gargoyle', triggerDist: 18 }, // Abyss High
+            { x: 165, type: 'gargoyle', triggerDist: 15 }  // Boss Gate
         ]
     }
 };

@@ -175,10 +175,24 @@ export const GameConfig = {
             recoveryDuration: 1.2    // Very punishable
         },
 
+        // Flying
+        gargoyle: {
+            name: 'Stone Gargoyle',
+            health: 2,
+            speed: 3.5,
+            damage: 1,
+            detectionRange: 12,
+            attackRange: 4,
+            telegraphDuration: 0.5,
+            attackDuration: 1.0,  // Swoop duration
+            recoveryDuration: 1.5,
+            isFlying: true
+        },
+
         // Boss
         orcWarlord: {
             name: 'Ironbound Warlord',
-            health: 20,
+            health: 40,
             speed: 2.0,
             chargeSpeed: 9.0,
             damage: 2, // 1 heart usually, maybe 2 creates tension

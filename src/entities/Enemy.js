@@ -39,10 +39,42 @@ export class Enemy {
         this.createMesh();
     }
 
+    playAnim(name) {
+        if (!this.mixer) return;
+
+        // Find clip (fuzzy match?)
+        let clip = this.animations[name];
+
+        // Fallback: Try keys including name
+        if (!clip) {
+            const key = Object.keys(this.animations).find(k => k.includes(name));
+            if (key) clip = this.animations[key];
+        }
+
+        if (clip) {
+            const action = this.mixer.clipAction(clip);
+            if (!action.isRunning()) {
+                this.mixer.stopAllAction(); // Simple switch
+                action.reset().play();
+            }
+            return action;
+        }
+    }
+
+    canDealDamage() {
+        if (!this.fsm) return false;
+        const s = this.fsm.currentStateName.toUpperCase();
+        return s.includes('ATTACK') || s === 'SWOOP' || s === 'HEADBUTT' || s === 'LUNGE' || s === 'BITE';
+    }
+
     update(dt) {
-        if (!this.isActive) return;
-        if (this.mixer) {
-            this.mixer.update(dt);
+        if (!this.isActive && !this.isDying) return;
+
+        if (this.mixer) this.mixer.update(dt);
+
+        // AI Logic only if alive
+        if (this.isActive && this.fsm) {
+            this.fsm.update(dt);
         }
     }
 
@@ -82,8 +114,27 @@ export class Enemy {
     die() {
         if (!this.isActive) return;
         this.isActive = false;
-        this.mesh.visible = false;
+        this.isDying = true;
         console.log(`${this.config.name} died!`);
+
+        // Play Death Anim
+        this.playAnim('death');
+        const deathClip = this.animations['death'];
+        if (deathClip && this.mixer) {
+            const act = this.mixer.clipAction(deathClip);
+            act.reset(); // Ensure valid start
+            act.setLoop(THREE.LoopOnce);
+            act.clampWhenFinished = true;
+            act.play();
+        }
+
+        // Cleanup after 2s
+        setTimeout(() => {
+            if (this.isDying) {
+                this.mesh.visible = false;
+                this.isDying = false;
+            }
+        }, 2000);
 
         if (this.game && this.game.audio) this.game.audio.playSound('enemy_death');
 
@@ -122,9 +173,6 @@ export class Enemy {
                 });
             }
         }
-
-        // Remove from scene (simple version)
-        this.scene.remove(this.mesh);
     }
 
     fixedUpdate(dt) {

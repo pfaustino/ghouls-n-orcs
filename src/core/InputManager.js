@@ -44,7 +44,7 @@ export class InputManager {
             jump: ['Space'],
             attackPrimary: ['KeyJ'],      // Throw
             attackSecondary: ['KeyK'],    // Heavy melee
-            guard: ['KeyL'],              // Guard/Dodge
+            roll: ['KeyL'],               // Roll/Dodge
 
             // Weapons
             weaponPrev: ['KeyQ'],
@@ -162,7 +162,7 @@ export class InputManager {
      */
     isHeld(action) {
         const codes = this.bindings[action] || [];
-        return codes.some(code => this.keys.get(code));
+        return codes.some(code => this.keys.get(code)) || this.keys.get(`GP_${action}`);
     }
 
     /**
@@ -170,7 +170,7 @@ export class InputManager {
      */
     isJustPressed(action) {
         const codes = this.bindings[action] || [];
-        return codes.some(code => this.justPressed.has(code));
+        return codes.some(code => this.justPressed.has(code)) || this.justPressed.has(`GP_${action}`);
     }
 
     /**
@@ -178,7 +178,7 @@ export class InputManager {
      */
     isJustReleased(action) {
         const codes = this.bindings[action] || [];
-        return codes.some(code => this.justReleased.has(code));
+        return codes.some(code => this.justReleased.has(code)) || this.justReleased.has(`GP_${action}`);
     }
 
     /**
@@ -298,7 +298,7 @@ export class InputManager {
             0: 'jump',           // A/Cross
             2: 'attackPrimary',  // X/Square
             3: 'attackSecondary',// Y/Triangle
-            1: 'guard',          // B/Circle
+            1: 'roll',           // B/Circle
             4: 'weaponPrev',     // LB
             5: 'weaponNext',     // RB
             9: 'pause'           // Start

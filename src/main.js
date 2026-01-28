@@ -21,6 +21,8 @@ import { Player } from './entities/Player.js';
 import { GameConfig } from './config/GameConfig.js';
 import { Ghoul } from './entities/Ghoul.js';
 
+export const VERSION = '0.9.8.1';
+
 /**
  * Main Game Class
  * Orchestrates all game systems and manages the core game loop.
@@ -76,7 +78,7 @@ class Game {
      * Initialize all game systems
      */
     async init() {
-        console.log('🎮 Ghouls n Orcs - Initializing...');
+        console.log(`🎮 Ghouls n Orcs v${VERSION} - Initializing...`);
 
         // Show debug initially
         const debugPanel = document.getElementById('debug-info');
@@ -225,7 +227,7 @@ class Game {
             'ghoul': 'Zombie.glb',
             'orc': 'Orc.glb',
             'skeleton': 'Skeleton.glb',
-            'gargoyle': 'Goleling.glb'
+            'gargoyle': 'Demon.glb'
         };
 
         const loadModel = (key, file) => {
@@ -251,6 +253,13 @@ class Game {
 
         // Load all models in parallel
         const promises = Object.entries(models).map(([key, file]) => loadModel(key, file));
+
+        // Load Sounds
+        if (this.audio) {
+            promises.push(this.audio.loadSound('punch', './assets/sounds/punch.mp3'));
+            promises.push(this.audio.loadSound('spear_thrust', './assets/sounds/spear_thrust.mp3'));
+        }
+
         await Promise.all(promises);
 
         // After assets load, load level
@@ -276,6 +285,60 @@ class Game {
         this.inputManager.on('pause', () => {
             this.isPaused = !this.isPaused;
             console.log(this.isPaused ? '⏸️ Game Paused' : '▶️ Game Resumed');
+        });
+
+        // Debug Level Warps (Direct listeners for Shift/Ctrl combos)
+        window.addEventListener('keydown', (e) => {
+            if (!this.debugMode) return;
+
+            // Shift+1/2: End of Level (Use code because e.key becomes !/@)
+            if (e.shiftKey) {
+                if (e.code === 'Digit1') this.warpToLevel('graveyard', 'end');
+                if (e.code === 'Digit2') this.warpToLevel('crypt', 'end');
+            }
+
+            // Ctrl+1/2: Start of Level
+            if (e.ctrlKey) {
+                if (e.code === 'Digit1') this.warpToLevel('graveyard', 'start');
+                if (e.code === 'Digit2') this.warpToLevel('crypt', 'start');
+            }
+        });
+
+        // Setup Mobile Controls
+        const buttons = document.querySelectorAll('.mc-btn');
+        buttons.forEach(btn => {
+            const code = btn.dataset.key;
+            if (!code) return;
+
+            const press = (e) => {
+                if (e.cancelable) e.preventDefault();
+
+                // Simulate Key Press
+                if (!this.inputManager.keys.get(code)) {
+                    this.inputManager.justPressed.add(code);
+                    this.inputManager.addToBuffer(code);
+                }
+                this.inputManager.keys.set(code, true);
+                this.inputManager.checkBindings(code, 'pressed');
+            };
+
+            const release = (e) => {
+                if (e.cancelable) e.preventDefault();
+
+                // Simulate Key Release
+                this.inputManager.keys.set(code, false);
+                this.inputManager.justReleased.add(code);
+                this.inputManager.checkBindings(code, 'released');
+            };
+
+            btn.addEventListener('touchstart', press, { passive: false });
+            btn.addEventListener('touchend', release, { passive: false });
+            btn.addEventListener('touchcancel', release, { passive: false });
+
+            // Mouse support for testing (if enabled via CSS pointer-events)
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
         });
     }
 
@@ -343,10 +406,32 @@ class Game {
 
         // Reload level
         if (this.levelManager) {
-            this.levelManager.restartLevel();
+            // this.levelManager.restartLevel(); // Old: Restart current
+            this.levelManager.loadLevel('graveyard'); // New: Restart entire game
         }
 
         console.log('✅ Game restarted');
+    }
+
+    warpToLevel(levelId, loc) {
+        if (!this.levelManager) return;
+
+        // Hide UI overlays
+        const victoryUI = document.getElementById('victory-screen');
+        if (victoryUI) victoryUI.classList.add('hidden');
+
+        this.levelManager.loadLevel(levelId);
+
+        let targetX = 0;
+        if (loc === 'end') {
+            // Warp near the boss/end
+            const level = this.levelManager.currentLevel;
+            targetX = level.length - 75; // Warp further back (safe from boss trigger)
+        }
+
+        this.player.setPosition(targetX, 5, 0);
+        this.player.velocity.set(0, 0, 0);
+        console.log(`⏩ Warped to ${levelId} (${loc})`);
     }
 
     /**
@@ -358,7 +443,11 @@ class Game {
         requestAnimationFrame(() => this.gameLoop());
 
         // Calculate delta time
+        // Calculate delta time
         this.deltaTime = Math.min(this.clock.getDelta(), 0.1); // Cap at 100ms
+
+        // Poll Gamepad
+        if (this.inputManager) this.inputManager.pollGamepad();
 
         // Skip update if paused
         if (this.isPaused) {
@@ -577,6 +666,9 @@ class Game {
 
             for (const enemy of this.enemies) {
                 if (!enemy.isActive) continue;
+
+                // Only check collision if enemy is attacking (User Request)
+                if (!enemy.canDealDamage()) continue;
 
                 enemy.mesh.updateMatrixWorld();
                 const eBox = enemy.getBounds();

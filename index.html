@@ -179,7 +179,135 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 10px;
             border-radius: 4px;
+            border-radius: 4px;
             z-index: 100;
+        }
+
+        /* Level Title Popup */
+        #level-title-overlay {
+            position: fixed;
+            top: 25%;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 1500;
+            opacity: 1;
+            transition: opacity 1.5s ease;
+        }
+
+        #level-title-overlay.hidden {
+            opacity: 0;
+        }
+
+        .level-title {
+            font-family: 'Times New Roman', serif;
+            font-size: 4rem;
+            color: #f0e6d2;
+            text-shadow: 0 0 10px #000, 0 0 20px #800000;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            z-index: 900;
+            pointer-events: none;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            #mobile-controls {
+                display: block;
+            }
+        }
+
+        .mc-dpad,
+        .mc-actions {
+            position: absolute;
+            bottom: 10px;
+            pointer-events: auto;
+        }
+
+        .mc-dpad {
+            left: 20px;
+            width: 150px;
+            height: 150px;
+        }
+
+        .mc-actions {
+            right: 20px;
+            width: 150px;
+            height: 150px;
+        }
+
+        .mc-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            font-family: sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            touch-action: manipulation;
+            position: absolute;
+        }
+
+        .mc-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        #btn-left {
+            left: 0;
+            top: 45px;
+        }
+
+        #btn-right {
+            left: 80px;
+            top: 45px;
+        }
+
+        #btn-attack {
+            right: 0;
+            bottom: 10px;
+            background-color: rgba(200, 50, 50, 0.3);
+        }
+
+        #btn-jump {
+            right: 70px;
+            bottom: 10px;
+            background-color: rgba(50, 200, 50, 0.3);
+        }
+
+        #btn-roll {
+            right: 10px;
+            bottom: 80px;
+            width: 50px;
+            height: 50px;
+            font-size: 11px;
+        }
+
+        #btn-swap {
+            right: 70px;
+            bottom: 80px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(200, 200, 0, 0.3);
+            font-size: 11px;
         }
     </style>
 </head>
@@ -197,14 +325,20 @@
     <!-- Game Over Screen -->
     <div id="game-over-screen" class="hidden">
         <h1 class="loading-title" style="color: #8b0000;">YOU DIED</h1>
-        <p class="loading-text">Press 'R' or Tap to Restart</p>
+        <p class="loading-text">You Died. 'R' or [A] or tap to restart</p>
     </div>
 
     <!-- Level Complete Screen -->
     <div id="victory-screen" class="hidden">
-        <h1 class="loading-title" style="color: #c4a35a;">VICTORY</h1>
+        <h1 id="victory-title" class="loading-title" style="color: #c4a35a;">VICTORY</h1>
         <p class="loading-text">The spirits are restless...</p>
-        <p class="loading-text" style="margin-top: 20px;">Press 'R' to Restart</p>
+        <p id="victory-instruction" class="loading-text" style="margin-top: 20px;">Press 'R' to Restart</p>
+    </div>
+    </div>
+
+    <!-- Level Title Overlay -->
+    <div id="level-title-overlay" class="hidden">
+        <h1 id="level-title-text" class="level-title">LEVEL 1</h1>
     </div>
 
     <!-- Game Container -->
@@ -246,6 +380,20 @@
 
     <!-- ES Module Entry Point -->
     <script type="module" src="./src/main.js"></script>
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div class="mc-dpad">
+            <div class="mc-btn" id="btn-left" data-key="ArrowLeft">←</div>
+            <div class="mc-btn" id="btn-right" data-key="ArrowRight">→</div>
+        </div>
+        <div class="mc-actions">
+            <!-- J: Attack, Space: Jump, L: Roll, E: Swap -->
+            <div class="mc-btn" id="btn-attack" data-key="KeyJ">ATK</div>
+            <div class="mc-btn" id="btn-jump" data-key="Space">JUMP</div>
+            <div class="mc-btn" id="btn-roll" data-key="KeyL">ROLL</div>
+            <div class="mc-btn" id="btn-swap" data-key="KeyE">SWAP</div>
+        </div>
+    </div>
 </body>
 
 </html>

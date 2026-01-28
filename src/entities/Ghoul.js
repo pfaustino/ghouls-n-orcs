@@ -46,8 +46,14 @@ export class Ghoul extends Enemy {
                     const parts = name.split('|');
                     name = parts[parts.length - 1];
                 }
-                this.animations[name.toLowerCase()] = clip;
-                console.log(`🧟 Anim: ${name.toLowerCase()}`);
+                const lower = name.toLowerCase();
+                this.animations[lower] = clip;
+
+                // Aliases
+                if (lower.includes('run')) this.animations['run'] = clip;
+                if (lower.includes('walk')) this.animations['walk'] = clip;
+                if (lower.includes('attack')) this.animations['attack'] = clip;
+                if (lower.includes('die') || lower.includes('death') || lower.includes('fall')) this.animations['death'] = clip;
             });
 
         } else {
@@ -133,6 +139,7 @@ export class Ghoul extends Enemy {
         this.fsm.addState('IDLE', new GhoulIdleState(this.fsm));
         this.fsm.addState('PATROL', new GhoulPatrolState(this.fsm));
         this.fsm.addState('PURSUE', new GhoulPursueState(this.fsm));
+        this.fsm.addState('ATTACK', new GhoulAttackState(this.fsm));
 
         this.fsm.changeState('PATROL');
     }
@@ -212,7 +219,7 @@ class GhoulPatrolState extends State {
         const myY = this.owner.position.y;
 
         // If no ground, or ground is way below us -> Ledge
-        if (!platform || (myY - platform.box.max.y) > 2.0) {
+        if (!platform || (myY - platform.box.max.y) > 6.0) {
             return true;
         }
 
@@ -249,7 +256,12 @@ class GhoulPursueState extends State {
 
     update(dt) {
         const player = this.owner.game.player;
-        if (!player) return;
+        if (!player || player.isDead) {
+            this.machine.changeState('IDLE');
+            return;
+        }
+
+        const wasStuck = Math.abs(this.owner.velocity.x) < 0.1;
 
         const dx = player.position.x - this.owner.position.x;
         const dist = Math.abs(dx);
@@ -257,8 +269,7 @@ class GhoulPursueState extends State {
 
         // Stop if too close (Attack range logic later)
         if (dist < 0.8) {
-            this.owner.velocity.x = 0;
-            this.owner.playAnim('attack'); // Attack anim
+            this.machine.changeState('ATTACK');
             return;
         } else {
             // Ensure running if coming from attack
@@ -270,7 +281,7 @@ class GhoulPursueState extends State {
         const platform = this.owner.game.levelManager.findGroundAt(lookAheadX);
         const myY = this.owner.position.y;
 
-        if (!platform || (myY - platform.box.max.y) > 2.0) {
+        if (!platform || (myY - platform.box.max.y) > 6.0) {
             this.owner.velocity.x = 0;
             // Maybe go back to idle/patrol if stuck?
         } else {
@@ -284,6 +295,36 @@ class GhoulPursueState extends State {
                     this.owner.model.rotation.y = this.owner.facingRight ? Math.PI / 2 : -Math.PI / 2;
                 }
             }
+
+            // Jump Check: stuck against wall + player above
+            if (this.owner.isGrounded && wasStuck && (player.position.y > this.owner.position.y + 0.5)) {
+                this.owner.velocity.y = 12; // Jump up
+                this.owner.isGrounded = false;
+            }
+        }
+    }
+}
+
+class GhoulAttackState extends State {
+    enter() {
+        this.owner.velocity.x = 0;
+        this.timer = 0;
+        this.owner.playAnim('attack');
+        if (this.owner.game.audio) this.owner.game.audio.playSound('punch');
+    }
+
+    update(dt) {
+        this.timer += dt;
+        // Face player
+        if (this.owner.game.player) {
+            const dist = this.owner.game.player.position.x - this.owner.position.x;
+            this.owner.facingRight = dist > 0;
+            if (this.owner.model) this.owner.model.rotation.y = this.owner.facingRight ? Math.PI / 2 : -Math.PI / 2;
+        }
+
+        // Return to pursue after attack
+        if (this.timer > 1.2) {
+            this.machine.changeState('PURSUE');
         }
     }
 }

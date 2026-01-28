@@ -5,6 +5,7 @@ import { Levels } from '../config/Levels.js';
 import { Ghoul } from '../entities/Ghoul.js';
 import { Orc } from '../entities/Orc.js';
 import { OrcWarlord } from '../entities/OrcWarlord.js';
+import { Gargoyle } from '../entities/Gargoyle.js';
 
 export class LevelManager {
     constructor(game) {
@@ -27,6 +28,8 @@ export class LevelManager {
 
         console.log(`Loading level: ${data.name}`);
         this.currentLevel = data;
+
+        this.showLevelTitle(data.name);
 
         // Clear existing
         this.clearLevel();
@@ -114,6 +117,25 @@ export class LevelManager {
             }
         });
 
+        // Check Victory Input
+        if (this.waitingForInput) {
+            const input = this.game.inputManager;
+            // Check R key (Keyboard) or A/X button (Gamepad)
+            if (input.keys.get('KeyR') || input.isJustPressed('jump') || input.isJustPressed('attackPrimary')) {
+                this.waitingForInput = false;
+                this.advanceLevel();
+            }
+        }
+
+        // Check Victory Input
+        if (this.waitingForInput) {
+            const input = this.game.inputManager;
+            if (input.keys.get('KeyR') || input.isJustPressed('jump') || input.isJustPressed('attackPrimary')) {
+                this.waitingForInput = false;
+                this.advanceLevel();
+            }
+        }
+
         // Check Level End (Only if NO boss)
         if (this.currentLevel && !this.currentLevel.hasBoss) {
             const lastPlat = this.currentLevel.platforms[this.currentLevel.platforms.length - 1];
@@ -133,32 +155,59 @@ export class LevelManager {
 
         console.log("🏆 Level Complete!");
         const ui = document.getElementById('victory-screen');
-        if (ui) ui.classList.remove('hidden');
+        const instruction = document.getElementById('victory-instruction');
+        const title = document.getElementById('victory-title');
 
-        // Stop player?
-        // this.game.player.velocity.x = 0; 
-        // this.game.player.input.disabled = true;
+        if (ui) {
+            const nextLevel = (this.currentLevel && this.currentLevel.nextLevel);
 
-        // Restart listener
-        const restartHandler = (e) => {
-            if (e.key === 'r' || e.key === 'R' || e.type === 'touchstart') {
-                window.removeEventListener('keydown', restartHandler);
-                window.removeEventListener('touchstart', restartHandler);
-                if (this.game && this.game.restartGame) {
-                    // Hide victory screen
-                    const victoryUI = document.getElementById('victory-screen');
-                    if (victoryUI) victoryUI.classList.add('hidden');
-                    this.game.restartGame();
-                } else {
-                    location.reload();
-                }
+            if (title) {
+                title.textContent = nextLevel ? "VICTORY" : "YOU WON THE GAME!";
             }
-        };
 
+            if (instruction) {
+                instruction.textContent = nextLevel
+                    ? "Press 'R' or [A] to Continue"
+                    : "Press 'R' or [A] to Return to Start";
+            }
+            ui.classList.remove('hidden');
+        }
+
+        // Delay input acceptance
         setTimeout(() => {
-            window.addEventListener('keydown', restartHandler);
-            window.addEventListener('touchstart', restartHandler);
+            this.waitingForInput = true;
         }, 1000);
+    }
+
+    advanceLevel() {
+        const victoryUI = document.getElementById('victory-screen');
+        if (victoryUI) victoryUI.classList.add('hidden');
+
+        // Check for Next Level
+        if (this.currentLevel && this.currentLevel.nextLevel) {
+            const nextId = this.currentLevel.nextLevel;
+            console.log(`➡️ Advancing to Level: ${nextId}`);
+
+            this.loadLevel(nextId);
+
+            // Reset Player for new level
+            if (this.game.player) {
+                this.game.player.setPosition(0, 5, 0);
+                this.game.player.velocity.set(0, 0, 0);
+                this.game.player.health = this.game.player.maxHealth;
+                this.game.player.isDead = false;
+                this.game.player.fsm.changeState('IDLE');
+                if (this.game.player.updateHealthUI) this.game.player.updateHealthUI();
+            }
+            this.victoryTriggered = false;
+        } else {
+            // No next level -> Restart Game
+            if (this.game && this.game.restartGame) {
+                this.game.restartGame();
+            } else {
+                location.reload();
+            }
+        }
     }
 
     spawnEnemy(spawnerInfo) {
@@ -182,6 +231,8 @@ export class LevelManager {
                 enemy = new OrcWarlord(this.scene, config, spawnerInfo.x, spawnY, this.game);
             } else if (spawnerInfo.type.startsWith('orc')) {
                 enemy = new Orc(this.scene, config, spawnerInfo.x, spawnY, this.game);
+            } else if (spawnerInfo.type === 'gargoyle') {
+                enemy = new Gargoyle(this.scene, config, spawnerInfo.x, spawnY, this.game);
             } else {
                 enemy = new Ghoul(this.scene, config, spawnerInfo.x, spawnY, this.game);
             }
@@ -285,5 +336,20 @@ export class LevelManager {
             }
         }
         return bestP;
+    }
+
+    showLevelTitle(name) {
+        const overlay = document.getElementById('level-title-overlay');
+        const text = document.getElementById('level-title-text');
+        if (overlay && text) {
+            text.textContent = name;
+            overlay.classList.remove('hidden');
+
+            if (this.titleTimeout) clearTimeout(this.titleTimeout);
+
+            this.titleTimeout = setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 3000);
+        }
     }
 }
