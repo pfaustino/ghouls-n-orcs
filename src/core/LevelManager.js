@@ -5,7 +5,9 @@ import { Levels } from '../config/Levels.js';
 import { Ghoul } from '../entities/Ghoul.js';
 import { Orc } from '../entities/Orc.js';
 import { OrcWarlord } from '../entities/OrcWarlord.js';
+import { Ogre } from '../entities/Ogre.js';
 import { Gargoyle } from '../entities/Gargoyle.js';
+import { Goleling } from '../entities/Goleling.js';
 
 export class LevelManager {
     constructor(game) {
@@ -17,6 +19,10 @@ export class LevelManager {
         this.spawners = [];
         this.levelGroup = new THREE.Group();
         this.scene.add(this.levelGroup);
+
+        // Victory state
+        this.victoryTriggered = false;
+        this.waitingForInput = false;
     }
 
     loadLevel(levelId) {
@@ -33,6 +39,10 @@ export class LevelManager {
 
         // Clear existing
         this.clearLevel();
+
+        // Reset victory state for new level
+        this.victoryTriggered = false;
+        this.waitingForInput = false;
 
         // Build geometry
         this.buildPlatforms(data.platforms);
@@ -227,12 +237,16 @@ export class LevelManager {
             console.log(`💀 Spawning ${config.name} at ${spawnerInfo.x}, ${spawnY}`);
 
             let enemy;
-            if (spawnerInfo.type === 'orcWarlord') {
+            if (spawnerInfo.type === 'ogreBoss') {
+                enemy = new Ogre(this.scene, config, spawnerInfo.x, spawnY, this.game);
+            } else if (spawnerInfo.type === 'orcWarlord') {
                 enemy = new OrcWarlord(this.scene, config, spawnerInfo.x, spawnY, this.game);
             } else if (spawnerInfo.type.startsWith('orc')) {
                 enemy = new Orc(this.scene, config, spawnerInfo.x, spawnY, this.game);
             } else if (spawnerInfo.type === 'gargoyle') {
                 enemy = new Gargoyle(this.scene, config, spawnerInfo.x, spawnY, this.game);
+            } else if (spawnerInfo.type === 'goleling') {
+                enemy = new Goleling(this.scene, config, spawnerInfo.x, spawnY, this.game);
             } else {
                 enemy = new Ghoul(this.scene, config, spawnerInfo.x, spawnY, this.game);
             }

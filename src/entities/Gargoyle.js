@@ -1,14 +1,57 @@
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { clone } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/SkeletonUtils.js';
 import { Enemy } from './Enemy.js';
 import { State } from '../core/StateMachine.js';
 import { GameConfig } from '../config/GameConfig.js';
 
 export class Gargoyle extends Enemy {
     createMesh() {
-        // GLTF Models (Goleling, Demon) are invisible/broken. 
-        // Using Procedural Mesh to ensure gameplay.
-        this.createProceduralMesh();
+        // Try to load Demon.glb model
+        if (this.game.assets && this.game.assets.models['gargoyle']) {
+            const gltf = this.game.assets.models['gargoyle'];
+            this.model = clone(gltf.scene);
+
+            this.mesh.add(this.model);
+
+            // Transform
+            this.model.rotation.y = Math.PI / 2; // Face toward player
+            this.model.scale.setScalar(1.2);
+            this.model.position.y = 0;
+
+            // Shadows
+            this.model.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) child.material = child.material.clone();
+                }
+            });
+            this.bodyMesh = this.model;
+
+            // Animations
+            this.mixer = new THREE.AnimationMixer(this.model);
+            this.animations = {};
+            gltf.animations.forEach(clip => {
+                let name = clip.name;
+                if (name.includes('|')) {
+                    const parts = name.split('|');
+                    name = parts[parts.length - 1];
+                }
+                const lowerName = name.toLowerCase();
+                this.animations[lowerName] = clip;
+
+                // Map animations
+                if (lowerName.includes('attack') || lowerName.includes('punch')) this.animations['attack'] = clip;
+                if (lowerName.includes('hit')) this.animations['hit'] = clip;
+                if (lowerName === 'walk' || lowerName === 'fly') this.animations['walk'] = clip;
+                if (lowerName === 'idle') this.animations['idle'] = clip;
+                if (lowerName === 'death') this.animations['death'] = clip;
+            });
+        } else {
+            // Fallback to procedural mesh if model not loaded
+            this.createProceduralMesh();
+        }
     }
 
     createProceduralMesh() {

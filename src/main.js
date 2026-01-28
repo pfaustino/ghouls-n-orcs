@@ -227,7 +227,9 @@ class Game {
             'ghoul': 'Zombie.glb',
             'orc': 'Orc.glb',
             'skeleton': 'Skeleton.glb',
-            'gargoyle': 'Demon.glb'
+            'gargoyle': 'Demon.glb',
+            'ogre': 'Bigarm.glb',
+            'goleling': 'Goleling.glb'
         };
 
         const loadModel = (key, file) => {
@@ -294,7 +296,7 @@ class Game {
             if (!this.levelManager || !this.levelManager.currentLevel) return;
 
             // Available levels in order
-            const levelOrder = ['graveyard', 'crypt'];
+            const levelOrder = ['graveyard', 'crypt', 'mines'];
             const currentId = this.levelManager.currentLevel.id;
             const currentIndex = levelOrder.indexOf(currentId);
             const nextIndex = (currentIndex + 1) % levelOrder.length;
@@ -308,16 +310,31 @@ class Game {
         window.addEventListener('keydown', (e) => {
             if (!this.debugMode) return;
 
-            // Shift+1/2: End of Level (Use code because e.key becomes !/@)
+            // Shift+1/2/3: End of Level (Use code because e.key becomes !/@)
             if (e.shiftKey) {
                 if (e.code === 'Digit1') this.warpToLevel('graveyard', 'end');
                 if (e.code === 'Digit2') this.warpToLevel('crypt', 'end');
+                if (e.code === 'Digit3') this.warpToLevel('mines', 'end');
             }
 
-            // Ctrl+1/2: Start of Level
+            // Ctrl+1/2/3: Start of Level
             if (e.ctrlKey) {
                 if (e.code === 'Digit1') this.warpToLevel('graveyard', 'start');
                 if (e.code === 'Digit2') this.warpToLevel('crypt', 'start');
+                if (e.code === 'Digit3') this.warpToLevel('mines', 'start');
+            }
+
+            // Ctrl+G: Warp to specific X
+            if (e.ctrlKey && e.code === 'KeyG') {
+                const input = prompt("Enter X coordinate to warp to:", "0");
+                if (input !== null) {
+                    const x = parseFloat(input);
+                    if (!isNaN(x) && this.player) {
+                        this.player.setPosition(x, 5, 0);
+                        this.player.velocity.set(0, 0, 0);
+                        console.log(`🌌 Warped to X: ${x}`);
+                    }
+                }
             }
         });
 

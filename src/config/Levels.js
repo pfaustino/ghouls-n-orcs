@@ -297,6 +297,163 @@ export const Levels = {
             { x: 165, type: 'gargoyle', triggerDist: 15 }, // Boss Gate (Old)
             { x: 200, type: 'gargoyle', triggerDist: 15 }, // New Section
             { x: 350, type: 'gargoyle', triggerDist: 15 }  // New Section
+        ],
+        nextLevel: 'mines'
+    },
+
+    mines: {
+        id: 'mines',
+        name: 'The Forsaken Mines',
+        length: 550,
+        hasBoss: true,
+        platforms: [
+            // =========================================
+            // SECTION 1: MINE ENTRANCE (x: 0 - 80)
+            // Descending into the depths
+            // =========================================
+            { x: -5, y: 0, w: 26, h: 2, d: 10, type: 'ground' }, // Entry platform
+
+            // Staircase descent
+            { x: 18, y: -0.5, w: 10, h: 1, d: 5, type: 'platform' },
+            { x: 28, y: -1.5, w: 8, h: 1, d: 5, type: 'platform' },
+            { x: 38, y: -2.5, w: 8, h: 1, d: 5, type: 'platform' },
+            { x: 48, y: -3.5, w: 10, h: 2, d: 10, type: 'ground' },
+
+            // Lower corridor
+            { x: 60, y: -4, w: 20, h: 2, d: 10, type: 'ground' },
+
+            // =========================================
+            // SECTION 2: COLLAPSED TUNNELS (x: 80 - 160)
+            // Tight corridors, debris
+            // =========================================
+            { x: 80, y: -4, w: 15, h: 2, d: 10, type: 'ground' },
+
+            // Rubble climb
+            { x: 93, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 101, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 109, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+
+            // Tunnel floor
+            { x: 118, y: -4, w: 25, h: 2, d: 10, type: 'ground' },
+
+            // Exit climb
+            { x: 138, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 146, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 154, y: -3, w: 8, h: 1, d: 5, type: 'platform' },
+
+            // =========================================
+            // SECTION 3: THE GREAT CHASM (x: 160 - 260)
+            // Floating platforms over abyss
+            // =========================================
+            { x: 165, y: -3, w: 10, h: 2, d: 10, type: 'ground' }, // Safe spot
+
+            // Mine cart platforms (floating)
+            { x: 178, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 186, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 194, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 202, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 210, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 218, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 226, y: -1, w: 6, h: 1, d: 5, type: 'platform' }, // Peak
+            { x: 234, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 242, y: -3, w: 8, h: 1, d: 5, type: 'platform' },
+
+            // Landing
+            { x: 252, y: -4, w: 20, h: 2, d: 10, type: 'ground' },
+
+            // =========================================
+            // SECTION 4: THE LAVA WORKS (x: 260 - 360)
+            // Platforms over deadly drops
+            // =========================================
+            { x: 270, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 278, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 286, y: -2, w: 8, h: 1, d: 5, type: 'platform' },
+            { x: 296, y: -1, w: 8, h: 1, d: 5, type: 'platform' },
+            { x: 306, y: 0, w: 10, h: 2, d: 10, type: 'ground' }, // High point
+
+            // Descent
+            { x: 318, y: -1, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 326, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 334, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 342, y: -4, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 350, y: -4, w: 12, h: 2, d: 10, type: 'ground' },
+
+            // =========================================
+            // SECTION 5: THE DEEP FORGE (x: 360 - 460)
+            // Long walkways, heavy combat
+            // =========================================
+            { x: 365, y: -4, w: 25, h: 2, d: 10, type: 'ground' }, // Main platform
+
+            // Upper walkway
+            { x: 385, y: -2, w: 8, h: 1, d: 5, type: 'platform' },
+            { x: 395, y: -2, w: 8, h: 1, d: 5, type: 'platform' },
+
+            // Return to ground
+            { x: 405, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 413, y: -4, w: 29, h: 2, d: 10, type: 'ground' },
+
+            // Final climb
+            { x: 435, y: -3, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 441, y: -2, w: 6, h: 1, d: 5, type: 'platform' },
+            { x: 451, y: -1, w: 8, h: 1, d: 5, type: 'platform' },
+
+            // =========================================
+            // SECTION 6: BOSS ARENA (x: 460 - 550)
+            // =========================================
+            { x: 470, y: 0, w: 60, h: 0.5, d: 10, type: 'ground' } // Boss Arena
+        ],
+        spawners: [
+            // --- SECTION 1: Mine Entrance ---
+            { x: 15, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 30, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 45, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 60, type: 'orcGrunt', triggerDist: 15 },
+
+            // --- SECTION 2: Collapsed Tunnels ---
+            { x: 85, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 95, type: 'goleling', triggerDist: 12 },
+            { x: 100, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 110, type: 'goleling', triggerDist: 12 },
+            { x: 115, type: 'orcGrunt', triggerDist: 15 },
+            { x: 130, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 140, type: 'goleling', triggerDist: 12 },
+            { x: 145, type: 'orcBerserker', triggerDist: 18 },
+
+            // --- SECTION 3: Great Chasm ---
+            { x: 175, type: 'gargoyle', triggerDist: 20 },
+            { x: 185, type: 'goleling', triggerDist: 12 },
+            { x: 190, type: 'ghoulShambling', triggerDist: 10 },
+            { x: 205, type: 'gargoyle', triggerDist: 20 },
+            { x: 215, type: 'goleling', triggerDist: 12 },
+            { x: 220, type: 'gargoyle', triggerDist: 20 },
+            { x: 235, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 250, type: 'orcGrunt', triggerDist: 15 },
+
+            // --- SECTION 4: Lava Works ---
+            { x: 275, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 285, type: 'goleling', triggerDist: 12 },
+            { x: 290, type: 'orcBerserker', triggerDist: 18 },
+            { x: 305, type: 'gargoyle', triggerDist: 18 },
+            { x: 315, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 325, type: 'goleling', triggerDist: 12 },
+            { x: 330, type: 'orcGrunt', triggerDist: 15 },
+            { x: 345, type: 'ghoulShambling', triggerDist: 12 },
+
+            // --- SECTION 5: Deep Forge ---
+            { x: 370, type: 'orcBerserker', triggerDist: 20 },
+            { x: 380, type: 'goleling', triggerDist: 12 },
+            { x: 385, type: 'ghoulShambling', triggerDist: 12 },
+            { x: 395, type: 'gargoyle', triggerDist: 18 },
+            { x: 405, type: 'goleling', triggerDist: 12 },
+            { x: 410, type: 'orcGrunt', triggerDist: 15 },
+            { x: 420, type: 'orcBerserker', triggerDist: 18 },
+            { x: 430, type: 'goleling', triggerDist: 12 },
+            { x: 435, type: 'ghoulCrawler', triggerDist: 10 },
+            { x: 445, type: 'orcBerserker', triggerDist: 20 },
+
+            // --- BOSS ---
+            { x: 490, type: 'ogreBoss', triggerDist: 30 }
         ]
+        // No nextLevel - this is the final level!
     }
 };

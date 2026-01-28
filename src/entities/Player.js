@@ -477,6 +477,10 @@ export class Player {
             console.log(this.godMode ? '✨ GOD MODE ENABLED' : '🚫 God mode disabled');
             if (this.godMode) {
                 this.flashColor(0xffd700, 0.5); // Gold flash
+            } else {
+                // Reset invincibility when exiting god mode
+                this.isInvincible = false;
+                this.invincibleTimer = 0;
             }
         }
 
