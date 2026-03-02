@@ -53,7 +53,8 @@ export class InputManager {
             // System
             pause: ['Escape'],
             debug: ['F3'],
-            godMode: ['KeyG']
+            godMode: ['KeyG'],
+            toggleControls: ['KeyH']
         };
 
         // Initialize

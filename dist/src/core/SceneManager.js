@@ -63,6 +63,24 @@ export class SceneManager {
         this.scene.add(rimLight);
         this.lights.rim = rimLight;
 
+        // Player Spotlight (Bright circle on ground)
+        const spotLight = new THREE.SpotLight(0xffffff, 10.0); // High intensity
+        spotLight.position.set(0, 15, 0);
+        spotLight.angle = Math.PI / 8; // Narrower cone for distinct circle
+        spotLight.penumbra = 0.2;      // Slight softness edges
+        spotLight.decay = 1;
+        spotLight.distance = 50;
+        spotLight.castShadow = true;
+
+        // Shadow settings
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        spotLight.shadow.bias = -0.0001;
+
+        this.scene.add(spotLight);
+        this.scene.add(spotLight.target); // Target must be in scene
+        this.lights.spot = spotLight;
+
         console.log("🔦 Lighting created");
     }
 
@@ -171,6 +189,20 @@ export class SceneManager {
             const parallaxX = cameraX * (1 - group.userData.speedMultiplier);
             group.position.x = parallaxX;
         });
+
+
+
+        // Update Spotlight to follow player
+        if (this.lights.spot && this.game.player && this.game.player.mesh) {
+            const playerPos = this.game.player.mesh.position;
+
+            // Light stays high above player
+            this.lights.spot.position.set(playerPos.x, playerPos.y + 15, playerPos.z + 2);
+
+            // Target aims at player's feet/ground
+            this.lights.spot.target.position.set(playerPos.x, playerPos.y, playerPos.z);
+            this.lights.spot.target.updateMatrixWorld();
+        }
 
         // Loop ground texture or physics boundaries would go here
     }

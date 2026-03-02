@@ -297,6 +297,16 @@ class Game {
             }
         });
 
+        // Controls visibility toggle
+        this.inputManager.on('toggleControls', (e) => {
+            if (e.type === 'pressed') {
+                const controlsHint = document.getElementById('controls-hint');
+                if (controlsHint) {
+                    controlsHint.classList.toggle('minimized');
+                }
+            }
+        });
+
         // Bind Settings UI
         const settingsUI = document.getElementById('settings-screen');
         const resumeBtn = document.getElementById('resume-btn');
