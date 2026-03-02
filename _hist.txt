@@ -1,0 +1,11 @@
+butler push itch_deploy_temp pfaustino/rpg-adventure-shattered-aegis:html5
+butler push build pfaustino/solar-system-trader:html5
+butler push . pfaustino/bullet-hell:html5
+butler push dist pfaustino/ghouls-n-orcs:web
+butler push dist pfaustino/ghouls-n-orcs:web --userversion-file dist/VERSION
+butler push dist pfaustino/ghouls-n-orcs:web --userversion-file dist/VERSION
+butler push dist pfaustino/ghouls-n-orcs:web --userversion-file dist/VERSION
+Get-Content (Get-PSReadLineOption).HistorySavePath | Select-String "butler push"
+Get-Content (Get-PSReadLineOption).HistorySavePath | Select-String "butler push" | Select-Object -ExpandProperty Line
+Get-Content (Get-PSReadLineOption).HistorySavePath | Where-Object { $_ -match 'butler push' }
+butler status pfaustino/ghouls-n-orcs > _butler.txt; Get-Content (Get-PSReadLineOption).HistorySavePath | Where-Object { $_ -match 'butler push' } > _hist.txt

@@ -406,6 +406,20 @@
             color: #c4a35a;
             font-weight: bold;
         }
+
+        #controls-hint .hint-row {
+            display: block;
+        }
+
+        #controls-hint.minimized .hint-row {
+            display: none;
+        }
+
+        #controls-hint.minimized::after {
+            content: "H : Show Keys";
+            color: #c4a35a;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -476,13 +490,14 @@
 
         <!-- Controls Cheat Sheet -->
         <div id="controls-hint">
-            <div><span class="hint-key">WASD / ↑↓←→</span> : Move</div>
-            <div><span class="hint-key">Space</span> : Jump</div>
-            <div><span class="hint-key">J</span> : Throw</div>
-            <div><span class="hint-key">K</span> : Melee</div>
-            <div><span class="hint-key">L</span> : Roll</div>
-            <div><span class="hint-key">Q / E</span> : Swap Weapon</div>
-            <div><span class="hint-key">Esc</span> : Pause</div>
+            <div class="hint-row"><span class="hint-key">WASD / ↑↓←→</span> : Move</div>
+            <div class="hint-row"><span class="hint-key">Space</span> : Jump</div>
+            <div class="hint-row"><span class="hint-key">J</span> : Throw</div>
+            <div class="hint-row"><span class="hint-key">K</span> : Melee</div>
+            <div class="hint-row"><span class="hint-key">L</span> : Roll</div>
+            <div class="hint-row"><span class="hint-key">Q / E</span> : Swap Weapon</div>
+            <div class="hint-row"><span class="hint-key">Esc</span> : Pause</div>
+            <div class="hint-row"><span class="hint-key">H</span> : Hide</div>
         </div>
     </div>
 
