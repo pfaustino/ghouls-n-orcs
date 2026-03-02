@@ -1,14 +1,57 @@
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { clone } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/SkeletonUtils.js';
 import { Enemy } from './Enemy.js';
 import { State } from '../core/StateMachine.js';
 import { GameConfig } from '../config/GameConfig.js';
 
 export class Gargoyle extends Enemy {
     createMesh() {
-        // GLTF Models (Goleling, Demon) are invisible/broken. 
-        // Using Procedural Mesh to ensure gameplay.
-        this.createProceduralMesh();
+        // Try to load Demon.glb model
+        if (this.game.assets && this.game.assets.models['gargoyle']) {
+            const gltf = this.game.assets.models['gargoyle'];
+            this.model = clone(gltf.scene);
+
+            this.mesh.add(this.model);
+
+            // Transform
+            this.model.rotation.y = Math.PI / 2; // Face toward player
+            this.model.scale.setScalar(1.2);
+            this.model.position.y = 0;
+
+            // Shadows
+            this.model.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) child.material = child.material.clone();
+                }
+            });
+            this.bodyMesh = this.model;
+
+            // Animations
+            this.mixer = new THREE.AnimationMixer(this.model);
+            this.animations = {};
+            gltf.animations.forEach(clip => {
+                let name = clip.name;
+                if (name.includes('|')) {
+                    const parts = name.split('|');
+                    name = parts[parts.length - 1];
+                }
+                const lowerName = name.toLowerCase();
+                this.animations[lowerName] = clip;
+
+                // Map animations
+                if (lowerName.includes('attack') || lowerName.includes('punch')) this.animations['attack'] = clip;
+                if (lowerName.includes('hit')) this.animations['hit'] = clip;
+                if (lowerName === 'walk' || lowerName === 'fly') this.animations['walk'] = clip;
+                if (lowerName === 'idle') this.animations['idle'] = clip;
+                if (lowerName === 'death') this.animations['death'] = clip;
+            });
+        } else {
+            // Fallback to procedural mesh if model not loaded
+            this.createProceduralMesh();
+        }
     }
 
     createProceduralMesh() {
@@ -69,14 +112,30 @@ export class Gargoyle extends Enemy {
 
     // Override physics to handle Flying (No Gravity)
     fixedUpdate(dt) {
-        if (!this.isActive) return;
+        if (this.isDying) {
+            // Fall to ground
+            this.velocity.y -= GameConfig.world.gravity * dt;
+            this.position.y += this.velocity.y * dt;
 
-        // Apply Gravity ONLY if dead or stunned (not implemented yet)
-        if (this.fsm.currentStateName === 'DEATH') {
-            // Standard gravity fall
-            super.fixedUpdate(dt);
+            // Ground Collision
+            if (this.game.levelManager) {
+                this.game.levelManager.checkGroundCollision(this);
+            } else if (this.position.y <= 0) {
+                this.position.y = 0;
+                this.velocity.y = 0;
+            }
+
+            this.mesh.position.copy(this.position);
+
+            // Rotate to lie down (Simulate death animation)
+            if (this.bodyMesh) {
+                this.bodyMesh.rotation.x = -Math.PI / 2; // Flat on back/front
+                this.bodyMesh.position.y = 0.4; // Offset to not sink in ground if origin is center
+            }
             return;
         }
+
+        if (!this.isActive) return;
 
         // Custom Physics for Flying
         // No Gravity applied here

@@ -52,7 +52,8 @@ export class InputManager {
 
             // System
             pause: ['Escape'],
-            debug: ['F3']
+            debug: ['F3'],
+            godMode: ['KeyG']
         };
 
         // Initialize
@@ -301,23 +302,25 @@ export class InputManager {
             1: 'roll',           // B/Circle
             4: 'weaponPrev',     // LB
             5: 'weaponNext',     // RB
+            8: 'selectLevel',    // Select/Back
             9: 'pause'           // Start
         };
 
         for (const [buttonIndex, action] of Object.entries(buttonMap)) {
             const button = gp.buttons[buttonIndex];
             if (button && button.pressed) {
-                // Simulate key press for this action
-                const codes = this.bindings[action];
-                if (codes && codes.length > 0) {
-                    if (!this.keys.get(`GP_${action}`)) {
-                        this.justPressed.add(`GP_${action}`);
-                    }
-                    this.keys.set(`GP_${action}`, true);
+                // Track gamepad button state
+                if (!this.keys.get(`GP_${action}`)) {
+                    this.justPressed.add(`GP_${action}`);
+                    // Emit action event for gamepad
+                    this.emit(action, { type: 'pressed', code: `GP_${action}` });
                 }
+                this.keys.set(`GP_${action}`, true);
             } else {
                 if (this.keys.get(`GP_${action}`)) {
                     this.justReleased.add(`GP_${action}`);
+                    // Emit release event for gamepad
+                    this.emit(action, { type: 'released', code: `GP_${action}` });
                 }
                 this.keys.set(`GP_${action}`, false);
             }

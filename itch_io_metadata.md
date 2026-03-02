@@ -33,4 +33,4 @@ Face unique enemies with distinct behaviors:
 *   **Gothic Atmosphere**: Dark, moody lighting and haunting soundscapes.
 
 ---
-*Version 0.9.9.1 - Early Access / Demo*
+*Version 0.9.14.1 - Early Access / Demo*

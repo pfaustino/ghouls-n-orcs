@@ -169,6 +169,62 @@
             font-size: 1.1rem;
         }
 
+        /* Buff Status Indicator */
+        .buff-status {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .buff-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            font-size: 20px;
+            position: relative;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.2s ease;
+        }
+
+        .buff-icon.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .buff-icon .buff-timer {
+            position: absolute;
+            bottom: -4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 0 0 3px #000;
+        }
+
+        .buff-icon.invincible {
+            background: linear-gradient(135deg, #00aaff, #0066aa);
+            border: 2px solid #00ddff;
+            box-shadow: 0 0 12px rgba(0, 170, 255, 0.6);
+            color: white;
+        }
+
+        .buff-icon.cooldown {
+            background: linear-gradient(135deg, #444, #222);
+            border: 2px solid #666;
+            color: #888;
+        }
+
+        .buff-icon.cooldown .buff-timer {
+            color: #ff6666;
+        }
+
         .debug-info {
             position: fixed;
             bottom: 20px;
@@ -383,6 +439,14 @@
                 </div>
             </div>
         </div>
+
+        <!-- Roll Buff Status -->
+        <div class="buff-status">
+            <div class="buff-icon" id="roll-buff">
+                🛡️
+                <span class="buff-timer" id="roll-buff-timer"></span>
+            </div>
+        </div>
     </div>
 
     <!-- Debug Info (toggleable) -->
@@ -392,6 +456,122 @@
         <div id="debug-velocity">Vel: 0, 0</div>
         <div id="debug-fps">FPS: 60</div>
     </div>
+
+    <!-- Settings/Pause Screen -->
+    <div id="settings-screen" class="screen-overlay" style="display: none; background: rgba(0, 0, 0, 0.85);">
+        <h1 style="font-size: 3rem; margin-bottom: 2rem; color: #c4a35a;">PAUSED</h1>
+
+        <div class="setting-row">
+            <label for="music-vol" style="font-size: 1.2rem;">Music Volume</label>
+            <input type="range" id="music-vol" min="0" max="1" step="0.1" value="0.5">
+        </div>
+
+        <div class="setting-row">
+            <label for="sfx-vol" style="font-size: 1.2rem;">Sound Volume</label>
+            <input type="range" id="sfx-vol" min="0" max="1" step="0.1" value="0.5">
+        </div>
+
+        <button id="resume-btn" class="big-btn">RESUME</button>
+        <button id="about-btn" class="secondary-btn">ABOUT</button>
+
+        <div style="margin-top: 1rem; font-size: 0.8em; color: #888;">
+            (Esc / Start to Resume)
+        </div>
+    </div>
+
+    <!-- About Screen -->
+    <div id="about-screen" class="screen-overlay" style="display: none; background: rgba(0, 0, 0, 0.95);">
+        <h1 style="color: #c4a35a; margin-bottom: 2rem;">ABOUT</h1>
+
+        <div style="text-align: center; line-height: 1.6; max-width: 600px;">
+            <p style="font-size: 1.2rem; margin-bottom: 1rem;">
+                <strong>Production:</strong><br>
+                Patrick Faustino
+            </p>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem;">
+                <strong>Donations:</strong><br>
+                <a href="https://www.paypal.com/ncp/payment/7KTGF6HN94VVQ" target="_blank"
+                    style="color: #c4a35a; text-decoration: underline;">Donate via PayPal</a>
+            </p>
+        </div>
+
+        <button id="about-back-btn" class="secondary-btn">BACK</button>
+    </div>
+
+    <!-- CSS for Settings -->
+    <style>
+        .setting-row {
+            margin: 1rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #c4a35a;
+        }
+
+        .big-btn {
+            margin-top: 2rem;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            background: #c4a35a;
+            color: #1a0a1a;
+            border: none;
+            cursor: pointer;
+            font-family: 'Times New Roman', serif;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: transform 0.1s;
+        }
+
+        .big-btn:hover {
+            transform: scale(1.05);
+            background: #d4b36a;
+        }
+
+        .big-btn:active {
+            transform: scale(0.95);
+        }
+
+        .secondary-btn {
+            margin-top: 1rem;
+            font-size: 1rem;
+            padding: 10px 20px;
+            background: transparent;
+            color: #c4a35a;
+            border: 2px solid #c4a35a;
+            cursor: pointer;
+            font-family: 'Times New Roman', serif;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .secondary-btn:hover {
+            background: rgba(196, 163, 90, 0.1);
+        }
+
+        /* Update screen overlay z-index to ensure it sits on top */
+        .screen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: #fff;
+            /* Ensure text is white */
+        }
+    </style>
 
     <!-- ES Module Entry Point -->
     <script type="module" src="./src/main.js"></script>

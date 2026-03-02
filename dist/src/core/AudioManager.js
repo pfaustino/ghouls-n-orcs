@@ -1,14 +1,34 @@
 export class AudioManager {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Master Gain
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = 0.3;
+        this.masterGain.gain.value = 1.0;
         this.masterGain.connect(this.ctx.destination);
+
+        // Music Channel
+        this.musicGain = this.ctx.createGain();
+        this.musicGain.gain.value = 0.5; // Default Music Vol
+        this.musicGain.connect(this.masterGain);
+
+        // SFX Channel
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.value = 0.5; // Default SFX Vol
+        this.sfxGain.connect(this.masterGain);
 
         this.enabled = true;
         this.sounds = new Map(); // SFX buffers
         this.music = new Map();  // Music tracks (HTMLAudio)
         this.currentMusic = null;
+    }
+
+    setMusicVolume(vol) {
+        if (this.musicGain) this.musicGain.gain.value = vol;
+    }
+
+    setSfxVolume(vol) {
+        if (this.sfxGain) this.sfxGain.gain.value = vol;
     }
 
     async loadSound(name, url) {
@@ -31,13 +51,40 @@ export class AudioManager {
         if (this.sounds.has(name)) {
             const source = this.ctx.createBufferSource();
             source.buffer = this.sounds.get(name);
-            source.connect(this.masterGain);
+            source.connect(this.sfxGain); // SFX Channel
             source.start();
             return;
         }
 
         // 2. Fallback to Synth
         this.playSynthFallback(name);
+    }
+
+    playMusic(name) {
+        if (!this.enabled) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        // Stop current
+        this.stopMusic();
+
+        if (this.sounds.has(name)) {
+            const source = this.ctx.createBufferSource();
+            source.buffer = this.sounds.get(name);
+            source.loop = true; // MUSIC LOOPS
+            source.connect(this.musicGain); // MUSIC Channel
+            source.start();
+            this.currentMusic = source;
+            console.log(`🎵 Playing Music: ${name}`);
+        } else {
+            console.warn(`⚠️ Music not found: ${name}`);
+        }
+    }
+
+    stopMusic() {
+        if (this.currentMusic) {
+            this.currentMusic.stop();
+            this.currentMusic = null;
+        }
     }
 
     playSynthFallback(name) {
@@ -90,7 +137,7 @@ export class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
 
         osc.connect(gain);
-        gain.connect(this.masterGain);
+        gain.connect(this.sfxGain);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
@@ -113,7 +160,7 @@ export class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
 
         noise.connect(gain);
-        gain.connect(this.masterGain);
+        gain.connect(this.sfxGain);
 
         noise.start();
     }
@@ -133,7 +180,7 @@ export class AudioManager {
             gain.gain.exponentialRampToValueAtTime(0.01, time + i * 0.1 + 0.3);
 
             osc.connect(gain);
-            gain.connect(this.masterGain);
+            gain.connect(this.sfxGain); // Synth melodies are SFX
             osc.start(time + i * 0.1);
             osc.stop(time + i * 0.1 + 0.3);
         });

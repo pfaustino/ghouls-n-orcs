@@ -148,6 +148,19 @@ export const GameConfig = {
             lowProfile: true         // Ducked hitbox
         },
 
+        // Goleling (small goblin)
+        goleling: {
+            name: 'Goleling',
+            health: 1,
+            speed: 4,                 // Fast
+            damage: 1,
+            detectionRange: 10,
+            attackRange: 1.0,
+            telegraphDuration: 0.2,
+            attackDuration: 0.1,
+            recoveryDuration: 0.3
+        },
+
         // Orcs (elite)
         orcGrunt: {
             name: 'Grunt Orc',
@@ -203,6 +216,22 @@ export const GameConfig = {
             recoveryDuration: 2.5,
             hasShield: true,
             shieldAngles: { min: -60, max: 60 },
+            isBoss: true
+        },
+
+        // Ogre Boss (Level 3)
+        ogreBoss: {
+            name: 'Bigarm the Crusher',
+            health: 60,
+            speed: 1.5,           // Slower but devastating
+            chargeSpeed: 7.0,
+            damage: 3,            // Hits HARD
+            detectionRange: 25,
+            attackRange: 4.0,     // Huge reach
+            telegraphDuration: 1.5,
+            attackDuration: 0.5,
+            recoveryDuration: 2.0,
+            hasShield: false,
             isBoss: true
         }
     },

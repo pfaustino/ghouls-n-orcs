@@ -227,7 +227,9 @@ class Game {
             'ghoul': 'Zombie.glb',
             'orc': 'Orc.glb',
             'skeleton': 'Skeleton.glb',
-            'gargoyle': 'Demon.glb'
+            'gargoyle': 'Demon.glb',
+            'ogre': 'Bigarm.glb',
+            'goleling': 'Goleling.glb'
         };
 
         const loadModel = (key, file) => {
@@ -258,12 +260,19 @@ class Game {
         if (this.audio) {
             promises.push(this.audio.loadSound('punch', './assets/sounds/punch.mp3'));
             promises.push(this.audio.loadSound('spear_thrust', './assets/sounds/spear_thrust.mp3'));
+            // BGM
+            promises.push(this.audio.loadSound('theme', './assets/piano-gothic-fantasy-mystery-horror.mp3'));
         }
 
         await Promise.all(promises);
 
         // After assets load, load level
         this.levelManager.loadLevel('graveyard');
+
+        // Start Music
+        if (this.audio) {
+            this.audio.playMusic('theme');
+        }
     }
 
     /**
@@ -282,25 +291,104 @@ class Game {
         });
 
         // Pause toggle
-        this.inputManager.on('pause', () => {
-            this.isPaused = !this.isPaused;
-            console.log(this.isPaused ? '⏸️ Game Paused' : '▶️ Game Resumed');
+        this.inputManager.on('pause', (e) => {
+            if (e.type === 'pressed') {
+                this.togglePause();
+            }
+        });
+
+        // Bind Settings UI
+        const settingsUI = document.getElementById('settings-screen');
+        const resumeBtn = document.getElementById('resume-btn');
+        const musicSlider = document.getElementById('music-vol');
+        const sfxSlider = document.getElementById('sfx-vol');
+
+        if (resumeBtn) {
+            resumeBtn.addEventListener('click', () => {
+                if (this.isPaused) this.togglePause();
+            });
+        }
+
+        if (musicSlider) {
+            musicSlider.addEventListener('input', (e) => {
+                if (this.audio) this.audio.setMusicVolume(parseFloat(e.target.value));
+            });
+            // Prevent game inputs while dragging slider
+            musicSlider.addEventListener('keydown', (e) => e.stopPropagation());
+        }
+
+        if (sfxSlider) {
+            sfxSlider.addEventListener('input', (e) => {
+                if (this.audio) this.audio.setSfxVolume(parseFloat(e.target.value));
+            });
+            sfxSlider.addEventListener('keydown', (e) => e.stopPropagation());
+        }
+
+        // About Button Logic
+        const aboutBtn = document.getElementById('about-btn');
+        const aboutBackBtn = document.getElementById('about-back-btn');
+        const aboutScreen = document.getElementById('about-screen');
+
+        if (aboutBtn && aboutScreen && settingsUI) {
+            aboutBtn.addEventListener('click', () => {
+                settingsUI.style.display = 'none';
+                aboutScreen.style.display = 'flex';
+            });
+        }
+
+        if (aboutBackBtn && aboutScreen && settingsUI) {
+            aboutBackBtn.addEventListener('click', () => {
+                aboutScreen.style.display = 'none';
+                settingsUI.style.display = 'flex';
+            });
+        }
+
+        // Select Level toggle (Gamepad Select button)
+        this.inputManager.on('selectLevel', (e) => {
+            // Only toggle on press, not release
+            if (e.type !== 'pressed') return;
+            if (!this.levelManager || !this.levelManager.currentLevel) return;
+
+            // Available levels in order
+            const levelOrder = ['graveyard', 'crypt', 'mines'];
+            const currentId = this.levelManager.currentLevel.id;
+            const currentIndex = levelOrder.indexOf(currentId);
+            const nextIndex = (currentIndex + 1) % levelOrder.length;
+            const nextLevel = levelOrder[nextIndex];
+
+            console.log(`🎮 Select: Toggling to level ${nextLevel}`);
+            this.warpToLevel(nextLevel, 'start');
         });
 
         // Debug Level Warps (Direct listeners for Shift/Ctrl combos)
         window.addEventListener('keydown', (e) => {
             if (!this.debugMode) return;
 
-            // Shift+1/2: End of Level (Use code because e.key becomes !/@)
+            // Shift+1/2/3: End of Level (Use code because e.key becomes !/@)
             if (e.shiftKey) {
                 if (e.code === 'Digit1') this.warpToLevel('graveyard', 'end');
                 if (e.code === 'Digit2') this.warpToLevel('crypt', 'end');
+                if (e.code === 'Digit3') this.warpToLevel('mines', 'end');
             }
 
-            // Ctrl+1/2: Start of Level
+            // Ctrl+1/2/3: Start of Level
             if (e.ctrlKey) {
                 if (e.code === 'Digit1') this.warpToLevel('graveyard', 'start');
                 if (e.code === 'Digit2') this.warpToLevel('crypt', 'start');
+                if (e.code === 'Digit3') this.warpToLevel('mines', 'start');
+            }
+
+            // Ctrl+G: Warp to specific X
+            if (e.ctrlKey && e.code === 'KeyG') {
+                const input = prompt("Enter X coordinate to warp to:", "0");
+                if (input !== null) {
+                    const x = parseFloat(input);
+                    if (!isNaN(x) && this.player) {
+                        this.player.setPosition(x, 5, 0);
+                        this.player.velocity.set(0, 0, 0);
+                        console.log(`🌌 Warped to X: ${x}`);
+                    }
+                }
             }
         });
 
@@ -404,13 +492,28 @@ class Game {
             this.player.setPosition(0, 5, 0);
         });
 
-        // Reload level
+        // Reload current level
         if (this.levelManager) {
-            // this.levelManager.restartLevel(); // Old: Restart current
-            this.levelManager.loadLevel('graveyard'); // New: Restart entire game
+            this.levelManager.restartLevel();
         }
 
         console.log('✅ Game restarted');
+    }
+
+    togglePause() {
+        this.isPaused = !this.isPaused;
+        const settingsUI = document.getElementById('settings-screen');
+
+        if (settingsUI) {
+            settingsUI.style.display = this.isPaused ? 'flex' : 'none';
+        }
+
+        console.log(this.isPaused ? '⏸️ Game Paused' : '▶️ Game Resumed');
+
+        // If resuming, ensure audio context is running
+        if (!this.isPaused && this.audio && this.audio.ctx.state === 'suspended') {
+            this.audio.ctx.resume();
+        }
     }
 
     warpToLevel(levelId, loc) {

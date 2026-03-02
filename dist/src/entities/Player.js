@@ -43,6 +43,8 @@ export class Player {
         this.currentWeaponIndex = 0;
         this.isInvincible = false;
         this.invincibleTimer = 0;
+        this.rollCooldown = 0;
+        this.godMode = false;
 
         // State Machine
         this.fsm = new StateMachine(this);
@@ -173,6 +175,33 @@ export class Player {
 
         // Initialize Weapon visual
         this.updateWeaponVisuals();
+
+        // Create buff indicator sprite (below feet)
+        this.createBuffIndicator();
+    }
+
+    createBuffIndicator() {
+        // Create a canvas-based texture for the buff indicator
+        this.buffCanvas = document.createElement('canvas');
+        this.buffCanvas.width = 128;
+        this.buffCanvas.height = 64;
+        this.buffContext = this.buffCanvas.getContext('2d');
+
+        this.buffTexture = new THREE.CanvasTexture(this.buffCanvas);
+        this.buffTexture.needsUpdate = true;
+
+        const buffMaterial = new THREE.SpriteMaterial({
+            map: this.buffTexture,
+            transparent: true,
+            depthTest: false
+        });
+
+        this.buffSprite = new THREE.Sprite(buffMaterial);
+        this.buffSprite.scale.set(2, 1, 1);
+        this.buffSprite.position.set(0, -0.5, 0); // Below feet
+        this.buffSprite.visible = false;
+
+        this.mesh.add(this.buffSprite);
     }
 
     playAnim(name) {
@@ -436,6 +465,47 @@ export class Player {
                 this.toggleTransparency(true, opacity);
             }
         }
+
+        // Handle roll cooldown timer
+        if (this.rollCooldown > 0) {
+            this.rollCooldown -= dt;
+        }
+
+        // God Mode Toggle (G key)
+        if (this.input.isJustPressed('godMode')) {
+            this.godMode = !this.godMode;
+            console.log(this.godMode ? '✨ GOD MODE ENABLED' : '🚫 God mode disabled');
+            if (this.godMode) {
+                this.flashColor(0xffd700, 0.5); // Gold flash
+            } else {
+                // Reset invincibility when exiting god mode
+                this.isInvincible = false;
+                this.invincibleTimer = 0;
+            }
+        }
+
+        // God Mode Effects
+        if (this.godMode) {
+            this.isInvincible = true;
+            this.health = GameConfig.player.maxArmor; // Always full health
+
+            // Flight controls (W/S or Up/Down for vertical movement)
+            const flySpeed = 15;
+            if (this.input.keys.get('KeyW') || this.input.keys.get('ArrowUp')) {
+                this.velocity.y = flySpeed;
+                this.isGrounded = false;
+            } else if (this.input.keys.get('KeyS') || this.input.keys.get('ArrowDown')) {
+                this.velocity.y = -flySpeed;
+            }
+
+            // Golden glow effect (subtle pulse)
+            if (Math.floor(performance.now() / 500) % 2 === 0) {
+                this.flashColor(0xffd700, 0.1);
+            }
+        }
+
+        // Update Roll Buff Status UI
+        this.updateRollBuffUI();
     }
 
     takeDamage(amount) {
@@ -507,6 +577,58 @@ export class Player {
                     el.classList.remove('lost');
                 }
             }
+        }
+    }
+
+    updateRollBuffUI() {
+        // Hide HTML version (we use 3D sprite now)
+        const buffEl = document.getElementById('roll-buff');
+        if (buffEl) buffEl.classList.remove('active');
+
+        // Update 3D sprite
+        if (!this.buffSprite || !this.buffContext) return;
+
+        const isInvincibleFromRoll = this.invincibleTimer > 0 && this.isInvincible;
+        const isOnCooldown = this.rollCooldown > 0;
+
+        if (isInvincibleFromRoll || isOnCooldown) {
+            this.buffSprite.visible = true;
+
+            const ctx = this.buffContext;
+            ctx.clearRect(0, 0, 128, 64);
+
+            // Background
+            if (isInvincibleFromRoll) {
+                ctx.fillStyle = 'rgba(0, 170, 255, 0.8)';
+                ctx.strokeStyle = '#00ddff';
+            } else {
+                ctx.fillStyle = 'rgba(80, 80, 80, 0.8)';
+                ctx.strokeStyle = '#666666';
+            }
+
+            // Rounded rect background
+            ctx.beginPath();
+            ctx.roundRect(4, 4, 120, 56, 10);
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Icon
+            ctx.font = '28px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'white';
+            ctx.fillText('🛡️', 35, 32);
+
+            // Timer text
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillStyle = isInvincibleFromRoll ? '#ffffff' : '#ff6666';
+            const time = isInvincibleFromRoll ? this.invincibleTimer : this.rollCooldown;
+            ctx.fillText(time.toFixed(1) + 's', 85, 32);
+
+            this.buffTexture.needsUpdate = true;
+        } else {
+            this.buffSprite.visible = false;
         }
     }
 
@@ -617,8 +739,8 @@ class IdleState extends State {
             return;
         }
 
-        // ROLL (L)
-        if (this.owner.input.isJustPressed('roll')) {
+        // ROLL (L) - with cooldown check
+        if (this.owner.input.isJustPressed('roll') && this.owner.rollCooldown <= 0) {
             this.machine.changeState('ROLL');
             return;
         }
@@ -645,8 +767,8 @@ class RunState extends State {
 
         // Transitions
 
-        // ROLL
-        if (this.owner.input.isJustPressed('roll')) {
+        // ROLL - with cooldown check
+        if (this.owner.input.isJustPressed('roll') && this.owner.rollCooldown <= 0) {
             this.machine.changeState('ROLL');
             return;
         }
@@ -988,6 +1110,7 @@ class RollState extends State {
     enter() {
         this.timer = 0;
         this.owner.isInvincible = true;
+        this.owner.invincibleTimer = 2.0; // 2 second invincibility
         this.owner.playAnim('jump'); // Fallback visual
 
         // Boost Speed in facing direction
@@ -995,8 +1118,8 @@ class RollState extends State {
         this.owner.velocity.x = GameConfig.player.runSpeed * 1.8 * dir;
         this.owner.velocity.y = 0;
 
-        // Flash blue for invincibility visual
-        this.owner.flashColor(0x00aaff, 0.4);
+        // Flash blue for invincibility visual (2 seconds)
+        this.owner.flashColor(0x00aaff, 2.0);
 
         if (this.owner.game && this.owner.game.audio) {
             // this.owner.game.audio.playSound('jump'); // Reuse jump sound
@@ -1009,13 +1132,21 @@ class RollState extends State {
         // Move
         this.owner.position.x += this.owner.velocity.x * dt;
 
-        if (this.timer > 0.5) {
+        // Allow jump to cancel roll (prevents rolling into chasms)
+        if (this.owner.input.isJustPressed('jump') && this.owner.isGrounded) {
+            this.machine.changeState('JUMP_RISE');
+            return;
+        }
+
+        // Roll movement ends after 0.25s (invincibility continues via timer)
+        if (this.timer > 0.25) {
             this.machine.changeState('IDLE');
         }
     }
 
     exit() {
-        this.owner.isInvincible = false;
+        // Don't clear isInvincible here - let invincibleTimer handle it
         this.owner.velocity.x = 0; // Stop momentum on exit
+        this.owner.rollCooldown = 2.0; // 2 second cooldown before next roll
     }
 }
