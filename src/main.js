@@ -20,6 +20,7 @@ import { AudioManager } from './core/AudioManager.js';
 import { Player } from './entities/Player.js';
 import { GameConfig } from './config/GameConfig.js';
 import { Ghoul } from './entities/Ghoul.js';
+import { initDevPanel } from './dev/DevPanel.js';
 
 export const VERSION = '0.9.9.1';
 
@@ -856,4 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Expose game instance for debugging
     window.game = game;
+    initDevPanel({
+        getStatus: () => `FPS: ${game.currentFPS ?? '—'}`,
+    });
 });
